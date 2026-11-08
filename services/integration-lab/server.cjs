@@ -20,7 +20,7 @@ if (process.env.PGUSER !== 'dt_lab_reader' || process.env.PGHOST !== 'db') {
 
 const fromApi = createRequire(path.resolve(__dirname, '../api/upstream/package.json'));
 const pgp = fromApi('pg-promise');
-const { WebSocketServer } = fromApi('ws');
+const WebSocketServer = fromApi('ws').Server;
 
 const db = pgp({})({
   host: process.env.PGHOST,
