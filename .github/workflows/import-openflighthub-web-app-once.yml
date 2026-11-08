@@ -1,0 +1,101 @@
+name: One-time OpenFlightHub web-app import
+on:
+  push:
+    branches:
+      - feat/import-openflighthub-web-app-20261108
+    paths:
+      - .github/workflows/import-openflighthub-web-app-once.yml
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Import exact verified archive and remove one-time bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error --retry 3 "https://api.github.com/repos/OpenFlightHub/web-app/zipball/387926362b99d8d371a07a557407fd53543054b4" --output "$RUNNER_TEMP/openflighthub-web-app.zip"
+          python3 - <<'PY'
+          import os, shutil, subprocess, zipfile
+          from pathlib import Path, PurePosixPath
+          archive=Path(os.environ["RUNNER_TEMP"])/"openflighthub-web-app.zip"
+          src=Path(os.environ["RUNNER_TEMP"])/"web-app-import-source"
+          dest=Path("apps/web-app")
+          src.mkdir(parents=True,exist_ok=False)
+          count=total=0
+          with zipfile.ZipFile(archive) as z:
+              for entry in z.infolist():
+                  if entry.is_dir(): continue
+                  parts=PurePosixPath(entry.filename).parts
+                  if len(parts)<2 or any(p in ("", ".", "..") for p in parts):
+                      raise RuntimeError("Invalid archive path: "+entry.filename)
+                  target=src.joinpath(*parts[1:])
+                  target.parent.mkdir(parents=True,exist_ok=True)
+                  target.write_bytes(z.read(entry))
+                  count+=1
+                  total+=entry.file_size
+          if (count,total)!=(302,8670188):
+              raise RuntimeError(f"Unexpected inventory: {count} files, {total} bytes")
+          subprocess.run(["git","init","-q",str(src)],check=True)
+          subprocess.run(["git","-C",str(src),"add","-A"],check=True)
+          tree=subprocess.check_output(["git","-C",str(src),"write-tree"],text=True).strip()
+          if tree!="1ca45d31e8329e19b1eb2fa7d67abd57a57797fe":
+              raise RuntimeError("Source is not identical to the supplied ZIP: "+tree)
+          shutil.rmtree(src/".git")
+          if dest.exists(): raise RuntimeError("Destination apps/web-app already exists")
+          dest.parent.mkdir(parents=True,exist_ok=True)
+          shutil.copytree(src,dest)
+          Path("docs/web-app-import.md").write_text("""# Web-App-Import (OpenFlightHub)
+          
+          Origin: user-provided web-app-master.zip
+          Upstream: https://github.com/OpenFlightHub/web-app
+          Pinned commit: 387926362b99d8d371a07a557407fd53543054b4
+          Verified source tree: 1ca45d31e8329e19b1eb2fa7d67abd57a57797fe
+          Scope: 302 files, 8670188 bytes, imported to apps/web-app.
+          
+          ## Legal and operational status
+          
+          The supplied archive has no LICENSE file. There is no verified
+          permission to redistribute or modify this upstream web application.
+          Resolve the rights before merging or distributing the source.
+          The existing MIT-licensed vendor modules are unchanged.
+          
+          This is a standalone Vue 3 / Vite / TypeScript frontend snapshot.
+          It requires OpenFlightHub-compatible backend and authentication services,
+          which have NOT been imported or connected. Live device integration and
+          read-only behavior are NOT verified. Do not deploy or use for flight control.
+          
+          ## Checks
+          
+          From apps/web-app: npm ci, npm run type-check, npm run build-only.
+          The included lint command uses --fix and modifies source files;
+          do not run it on the unmodified snapshot without a separate worktree.
+          Review API URLs, CSP, authentication and dependencies before any deployment.
+          The nested apps/web-app/.github/workflows/deploy.yml file is inactive
+          as a repository-level workflow.
+          """,encoding="utf-8")
+          readme=Path("README.md")
+          text=readme.read_text(encoding="utf-8")
+          start=text.index("> **Wichtig:**")
+          end=text.index("\n\n",start)
+          text=text[:start]+("> **Wichtig:** Der ausdrücklich angeforderte Web-App-Snapshot "
+          "liegt unter apps/web-app/. Das Archiv enthält keine Wiederverwendungslizenz. "
+          "Die Weitergabe und der Merge in main erfordern eine Rechteprüfung. "
+          "Das zugehörige Backend fehlt; dies ist keine einsatzfähige Bodenstation.")+text[end:]
+          text=text.replace("## Inhalt\n","## Inhalt\n\n- apps/web-app/: unveränderter Vue-/TypeScript-Web-App-Quellsnapshot aus der ZIP; siehe docs/web-app-import.md.\n",1)
+          text=text.replace("Keine verdeckte Lizenzannahme. Keine Übernahme fremder nicht lizenzierter Quellen,","Keine verdeckte Lizenzannahme. Für die auf ausdrücklichen Wunsch importierte Web-App sind die Rechte weiterhin ungeklärt;",1)
+          text=text.replace("1. Erlaubnis der Rechteinhaber für zentrale OpenFlightHub-Komponenten einholen **oder** fehlende Funktionen unabhängig neu entwickeln.","1. Vor Merge und Weitergabe die Rechte an apps/web-app/ klären oder die UI eigenständig neu entwickeln.",1)
+          readme.write_text(text,encoding="utf-8")
+          print(f"Imported {count} files, {total} bytes; verified tree {tree}")
+          PY
+          rm .github/workflows/import-openflighthub-web-app-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && { echo "No changes"; exit 1; }
+          git commit -m "Import verified OpenFlightHub web-app ZIP snapshot"
+          git push origin HEAD:refs/heads/feat/import-openflighthub-web-app-20261108
