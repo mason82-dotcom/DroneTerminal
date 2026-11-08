@@ -48,7 +48,15 @@ jobs:
         run: |
           set -euo pipefail
           compose=(docker compose -f services/integration-lab/compose.yml)
-          cleanup() { "${compose[@]}" down -v --remove-orphans || true; }
+          cleanup() {
+            code=$?
+            if [ "$code" -ne 0 ]; then
+              echo "FAILED LAB RUN: service states and last 60 lines (no passwords are logged)"
+              "${compose[@]}" ps -a || true
+              "${compose[@]}" logs --no-color --tail 60 db seed api || true
+            fi
+            "${compose[@]}" down -v --remove-orphans || true
+          }
           trap cleanup EXIT
           "${compose[@]}" config --quiet
           "${compose[@]}" up -d --wait --wait-timeout 180 api
