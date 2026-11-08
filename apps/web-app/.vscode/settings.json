@@ -1,0 +1,7 @@
+{
+    "files.exclude": {
+        "/**/node_modules": true
+    },
+    "editor.indentSize": "tabSize",
+    "editor.tabSize": 4
+}

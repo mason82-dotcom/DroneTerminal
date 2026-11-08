@@ -1,0 +1,34 @@
+env:
+  PROJECT_NAME: ofh-web-app
+
+name: deploy-web-app
+on:
+  push:
+    branches:
+      - master
+jobs:
+  deploy:
+    runs-on: [server]
+    steps:
+      - run: echo "HOME=$(pwd)" >> $GITHUB_ENV #fix https://github.com/actions/runner/issues/1864
+
+      - name: Clean Workspace Folder
+        run: |
+          rm -rf ./* || true
+          rm -rf ./.??* || true
+
+      - uses: actions/checkout@v4
+        with:
+          path: repo
+
+      - name: Build docker image
+        run: docker build -t ${{ env.PROJECT_NAME }} repo
+
+      - name: Stop old docker container
+        run: docker stop ${{ env.PROJECT_NAME }} || true
+
+      - name: Remove old docker container
+        run: docker rm ${{ env.PROJECT_NAME }} || true
+
+      - name: Start new docker container
+        run: docker run --restart unless-stopped --name ${{ env.PROJECT_NAME }} -p 127.0.0.1:6000:80 -d ${{ env.PROJECT_NAME }}
