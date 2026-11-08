@@ -41,3 +41,7 @@ Die MIT-Lizenzen der übernommenen Module bleiben im jeweiligen Modulverzeichnis
 ## Generator-Kompatibilität (Offline)
 
 Der neue, isolierte Generator-Check `scripts/check-generated-contracts.cjs` führt die API- und Datenbanktyp-Erzeugung in einem temporären Verzeichnis aus und vergleicht vier Ergebnisse mit den eingecheckten Typen. Ausgangsnachweis: **4/4 MATCH, null Drift**, ohne Originaldateien zu verändern. In GitHub Actions ist die Prüfung als blockierender CI-Gate aktiviert (siehe [Audit-Anleitung](docs/generated-contract-audit.md)). Keine API-, DB-, MQTT- oder DJI-Laufzeit wird gestartet.
+
+## SDK-8.3.0-Vertragsprüfung (REST + WebSocket)
+
+Die eigene, nur lesende CI-Prüfung `scripts/check-sdk-contracts.cjs` gleicht den importierten SDK-Quellstand mit der OpenAPI und den WebSocket-Typdefinitionen des API-Backends ab. **94/94 REST-Operationen stimmen überein**, 12 interne Endpunkte bleiben wie vorgesehen aus dem Client ausgeschlossen, beide WebSocket-Typdateien sind byteidentisch und die Paket-/Lockfile-Versionen passen. Der Check wird durch vier Regressionstests abgesichert. Zwei offene Laufzeitprobleme (lokaler WS-Port und Multipart-Header) sowie die Browser-/E2E-Grenzen sind unter [SDK-Vertragsaudit](docs/sdk-contract-audit.md) dokumentiert. Es wurde kein Server gestartet.
