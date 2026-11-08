@@ -8,7 +8,8 @@ Eigenständiges Entwicklungsrepository für eine DJI-nahe Drohnen-Bodenstation u
 
 - apps/web-app/: unveränderter Vue-/TypeScript-Web-App-Quellsnapshot aus der ZIP; siehe docs/web-app-import.md.
 - services/database/upstream/: byteidentisches OpenFlightHub-Datenbankarchiv aus der ZIP. Dienste und Original-Skripte werden nicht ausgeführt; siehe docs/database-import.md. Optionales isoliertes PostGIS-Labor unter services/database/compose.lab.yml.
-- services/api/upstream/: unveränderter Express-/TypeScript-API-Quellsnapshot aus der ZIP; keine automatische Ausführung von MQTT, aktiven DJI-Operationen, Datenbankwrites oder Deploy-Skripten; siehe docs/api-import.md.\n- services/terrain/upstream/: unveränderter Gelände-/Höhen-/Sichtlinien-Quellsnapshot aus der ZIP; keine automatischen Dienststarts oder Verbindung zur API. Siehe docs/terrain-import.md.
+- services/api/upstream/: unveränderter Express-/TypeScript-API-Quellsnapshot aus der ZIP; keine automatische Ausführung von MQTT, aktiven DJI-Operationen, Datenbankwrites oder Deploy-Skripten; siehe docs/api-import.md.
+- services/terrain/upstream/: unveränderter Gelände-/Höhen-/Sichtlinien-Quellsnapshot aus der ZIP; keine automatischen Dienststarts oder Verbindung zur API. Siehe docs/terrain-import.md.
 
 - `vendor/openflighthub/`: originalgetreue, **MIT-lizenzierte** Quellmodule mit beibehaltenen Lizenzdateien (siehe Importprotokoll); große binäre Demos/Testfixtures werden ausgelassen.
 - `docs/openflighthub-source-inventory.md`: Inventar aller 16 Original-Repositories und Übernahmegrenzen.
