@@ -26,3 +26,18 @@ do not run it on the unmodified snapshot without a separate worktree.
 Review API URLs, CSP, authentication and dependencies before any deployment.
 The nested apps/web-app/.github/workflows/deploy.yml file is inactive
 as a repository-level workflow.
+
+## DroneTerminal-spezifische Transportanpassung (08.11.2026)
+
+Der vorstehende Importhash gilt für den ursprünglichen Quell-Snapshot.
+Im aktuellen Entwicklungsbranch wurde die Web-App anschließend gezielt
+geändert: `src/api/index.ts` nutzt jetzt explizite REST-/WebSocket-URLs
+und übersteuert ausschließlich `workspace.file.post` mit einem
+korrekten nativen Multipart-Transport. Die Originaldateien sind dadurch
+im aktuellen Web-App-Tree **nicht mehr vollständig byteidentisch** mit
+der ursprünglichen ZIP. Der unveränderte Quellstand ist über die
+Git-Historie weiterhin nachvollziehbar. Details und Tests:
+[web-transport-smoke.md](web-transport-smoke.md).
+
+Diese Maßnahme ist eine Browserkompatibilitätsanpassung, kein
+Produktiv- oder Hardware-Nachweis. Wiederverwendungsrechte bleiben offen.
