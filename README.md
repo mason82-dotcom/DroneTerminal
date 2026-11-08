@@ -28,3 +28,12 @@ Die MIT-Lizenzen der übernommenen Module bleiben im jeweiligen Modulverzeichnis
 1. Vor Merge und Weitergabe Rechte an apps/web-app/, services/database/upstream/, services/api/upstream/ und services/terrain/upstream/ klären oder die fehlenden Komponenten eigenständig neu entwickeln.
 2. Importierte Bibliotheken isoliert bauen und testen; sie sind noch nicht in eine neue Anwendung integriert.
 3. DJI-Funktionsumfang anhand der offiziellen Cloud-API-Dokumentation und echter Hardware verifizieren.
+
+## Weitere Entwicklerwerkzeuge (Archivimport 08.11.2026)
+
+- `vendor/openflighthub/api-client-sdk-typescript/`: auf den vollständigen 38-Dateien-Quellstand ergänzt; SDK 8.3.0 (MIT), vier VS-Code-Dateien nachgeladen.
+- `tools/openflighthub/dji-docs-converter/`: 83 Dateien XML-/DJI-Typgenerator; keine Live-Ausführung.
+- `tools/openflighthub/definition-generator/`: 22 Dateien Schema-/API-Typgenerator; kann Dateien überschreiben, daher nicht automatisiert.
+- `tools/openflighthub/mqtt-packet-analyzer/`: 9 Dateien Offline-MQTT-Loganalyse; Schutz von Gerätekennungen und Tokens erforderlich.
+
+**Wichtig:** Die drei neuen Tools besitzen in den ZIPs keine LICENSE-Datei. Ihre Weitergaberechte sind nicht nachgewiesen. Sie sind weder mit dem produktiven Backend verbunden noch auf dem Pi oder BRIX bereitgestellt. Details: [Importbericht](docs/developer-tools-import.md).
