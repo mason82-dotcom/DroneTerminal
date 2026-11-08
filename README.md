@@ -37,3 +37,7 @@ Die MIT-Lizenzen der übernommenen Module bleiben im jeweiligen Modulverzeichnis
 - `tools/openflighthub/mqtt-packet-analyzer/`: 9 Dateien Offline-MQTT-Loganalyse; Schutz von Gerätekennungen und Tokens erforderlich.
 
 **Wichtig:** Die drei neuen Tools besitzen in den ZIPs keine LICENSE-Datei. Ihre Weitergaberechte sind nicht nachgewiesen. Sie sind weder mit dem produktiven Backend verbunden noch auf dem Pi oder BRIX bereitgestellt. Details: [Importbericht](docs/developer-tools-import.md).
+
+## Generator-Kompatibilität (Offline)
+
+Der neue, isolierte Generator-Check `scripts/check-generated-contracts.cjs` führt die API- und Datenbanktyp-Erzeugung in einem temporären Verzeichnis aus und vergleicht vier Ergebnisse mit den eingecheckten Typen. Ausgangsnachweis: **4/4 MATCH, null Drift**, ohne Originaldateien zu verändern. In GitHub Actions ist die Prüfung als blockierender CI-Gate aktiviert (siehe [Audit-Anleitung](docs/generated-contract-audit.md)). Keine API-, DB-, MQTT- oder DJI-Laufzeit wird gestartet.
