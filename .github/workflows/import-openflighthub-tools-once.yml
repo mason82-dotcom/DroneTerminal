@@ -1,0 +1,102 @@
+name: One-time verified developer-tools import
+on:
+  push:
+    branches:
+      - feat/import-openflighthub-web-app-20261108
+    paths:
+      - .github/workflows/import-openflighthub-tools-once.yml
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Verify ZIP sources and import offline code snapshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 "https://api.github.com/repos/OpenFlightHub/api-client-sdk-typescript/zipball/edd06ac521555dcedef1ffe3080e65368f508641" -o "$RUNNER_TEMP/sdk.zip"
+          curl -fsSL --retry 3 "https://api.github.com/repos/OpenFlightHub/dji-docs-converter/zipball/9d4a740f8efa673c941bad8f074c35c3a95fcf88" -o "$RUNNER_TEMP/dji-docs-converter.zip"
+          curl -fsSL --retry 3 "https://api.github.com/repos/OpenFlightHub/definition-generator/zipball/9f5f6c6b4959270a5ba3512ba2f14c100a3d2743" -o "$RUNNER_TEMP/definition-generator.zip"
+          curl -fsSL --retry 3 "https://api.github.com/repos/OpenFlightHub/mqtt-packet-analyzer/zipball/e50fbf3828b060193bdb113b27d00c92534520ba" -o "$RUNNER_TEMP/mqtt-packet-analyzer.zip"
+          python3 - <<'PY'
+          from pathlib import Path, PurePosixPath
+          import zipfile,subprocess,shutil,os
+          t=Path(os.environ["RUNNER_TEMP"])
+          sources=[
+          ("sdk",38,154284,"8c2d51d530a828ae8501745b55c861186ff51605"),
+          ("dji-docs-converter",83,146900,"ed60b76cf92965082b0ec8de82ee92d7b73867b1"),
+          ("definition-generator",22,61629,"65fc29e0ecd8166e074b67af0bb1b36feee9f58e"),
+          ("mqtt-packet-analyzer",9,13525,"fdec896628f0a2c830d4c47fd7ccf01555ace2dc")]
+          for name,expected_count,expected_bytes,expected_tree in sources:
+              archive=t/(name+".zip")
+              src=t/("checked-"+name)
+              src.mkdir()
+              count=size=0
+              with zipfile.ZipFile(archive) as z:
+                  for member in z.infolist():
+                      if member.is_dir():continue
+                      parts=PurePosixPath(member.filename).parts
+                      if len(parts)<2 or any(p in ("",".","..") for p in parts):
+                          raise RuntimeError("Unsafe archive member "+member.filename)
+                      if (member.external_attr>>16)&0o170000 not in (0,0o100000):
+                          raise RuntimeError("Non-regular archive member "+member.filename)
+                      out=src.joinpath(*parts[1:])
+                      out.parent.mkdir(parents=True,exist_ok=True)
+                      out.write_bytes(z.read(member))
+                      count+=1
+                      size+=member.file_size
+              if (count,size)!=(expected_count,expected_bytes):
+                  raise RuntimeError(f"{name} count/size mismatch: {count}/{size}")
+              subprocess.run(["git","init","-q",str(src)],check=True)
+              subprocess.run(["git","-C",str(src),"add","-A"],check=True)
+              sha=subprocess.check_output(["git","-C",str(src),"write-tree"],text=True).strip()
+              if sha!=expected_tree:raise RuntimeError(f"{name} tree mismatch {sha}")
+              shutil.rmtree(src/".git")
+              if name=="sdk":
+                  dest=Path("vendor/openflighthub/api-client-sdk-typescript")
+                  if len([x for x in dest.rglob("*") if x.is_file()])!=34:
+                      raise RuntimeError("Curated SDK baseline has changed")
+                  inserted=[]
+                  for x in src.rglob("*"):
+                      if not x.is_file():continue
+                      relative=x.relative_to(src)
+                      target=dest/relative
+                      if target.exists():
+                          if target.read_bytes()!=x.read_bytes():
+                              raise RuntimeError("Refusing SDK overwrite: "+str(relative))
+                      else:
+                          target.parent.mkdir(parents=True,exist_ok=True)
+                          target.write_bytes(x.read_bytes())
+                          inserted.append(str(relative))
+                  if len(inserted)!=4 or any(".vscode/" not in item for item in inserted):
+                      raise RuntimeError("Unexpected SDK additions: "+str(inserted))
+                  print("SDK PASS: restored 4 omitted editor configs, no overwritten files")
+              else:
+                  dest=Path("tools/openflighthub")/name
+                  if dest.exists():raise RuntimeError("Destination already exists: "+str(dest))
+                  dest.parent.mkdir(parents=True,exist_ok=True)
+                  shutil.copytree(src,dest)
+                  print(f"{name} PASS: {count} files, {size} bytes, tree {sha}")
+          path=Path("scripts/verify-vendor.mjs")
+          data=path.read_text()
+          assert "['api-client-sdk-typescript', 34]" in data
+          assert "expected: 102." in data
+          assert "total !== 102" in data
+          data=data.replace("['api-client-sdk-typescript', 34]","['api-client-sdk-typescript', 38]")
+          data=data.replace("expected: 102.","expected: 106.")
+          data=data.replace("total !== 102","total !== 106")
+          path.write_text(data)
+          print("Vendor verifier updated to 106 complete MIT-licensed files")
+          PY
+          rm .github/workflows/import-openflighthub-tools-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && { echo "No changes"; exit 1; }
+          git commit -m "Import verified OpenFlightHub development tools and complete MIT SDK"
+          git push origin HEAD:refs/heads/feat/import-openflighthub-web-app-20261108
