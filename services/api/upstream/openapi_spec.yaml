@@ -1,0 +1,6101 @@
+openapi: 3.0.3
+info:
+  x-logo:
+    url: /api/logo.png
+
+  title: OpenFlightHub - API
+  description: |-
+    # Welcome to the API!
+
+    **This API does not document the WebSocket API**
+    A reference can be found in our [typescript client sdk documentation](https://github.com/OpenFlightHub/api-client-sdk-typescript/blob/master/dev/LIVE_WEBSOCKET.md)
+
+    Check out our typescript client sdk [on github](https://github.com/OpenFlightHub/api-client-sdk-typescript)
+
+    # Some important notes:
+    - HTTP Response Code 410 (Gone) is used to indicate that you reached a valid API endpoint, but the item you where looking for does not exist in the database. 404 (Not found) indicates that the API endpoint does not exist, so probably your code is wrong!
+
+    ## Path logic:
+
+    For example a `tree` has a property `apples` which is an array of `apple`.
+
+    These paths reflect some actions:
+    | Path | Method | Description |
+    | --- | --- | --- |
+    | `/tree/{id}` | GET | returns the tree data and and array of apples, but only the id of each apple, not the apple data`{apples: [{ id: "1" }, { id: "2" }]}` |
+    | `/apple/{id}` | GET | returns the apple data `{id: "1", weight: 0.2 }`|
+    | `/apple/{id}` | PATCH | modify an apple. Each property is optional, only present properties will be updated in the database. Maybe some properties cannot be changed! |
+    | `/apple/{id}` | DELETE | delete an apple |
+    | `/apple` | POST | create a new apple |
+
+    ## Request Bodies
+
+    | Method | Request body |
+    | --- | --- |
+    | GET | No |
+    | POST | No |
+    | PATCH | No |
+    | DELETE | No |
+
+    ## Ordering of data
+    Data is not guaruanteed to be ordered by id or creation date (unless endpoint specifically tells it does).
+
+    ## General Status Codes
+
+    These status codes can be returned by almost any path and are not specifically declared for each path!
+
+    ### Methods: All
+
+    * 400: you (the client) sent invalid data to the server
+    * 401: you are not authorized (but this endpoint requires you to be)
+    * 403: you do not have permission to do this
+    * 410: we understood your request but whatever you where looking for does not exist
+
+  version: 0.22.0
+externalDocs:
+  description: Learn more about Swagger Editor and OpenApi
+  url: http://swagger.io
+servers:
+  - url: https://dev.openflighthub.org/api/
+  - url: http://localhost/
+tags:
+  - name: authentication
+    description: Everything about authentication (for link authentication see `/link` endpoints)
+  - name: user
+  - name: organisations-and-teams
+  - name: workspace
+  - name: connection
+  - name: remote-controller
+  - name: drone
+  - name: flight
+  - name: missions-and-tasks
+  - name: connection-link
+    description: All the endpoints for linked devices (e.g. a drone or a remote controller)
+  - name: info
+    description: services that offer different kinds of information
+  - name: file
+  - name: admin
+    description: Services for server administrators
+paths:
+  # auth
+
+  /auth/login:
+    post:
+      tags:
+        - authentication
+      summary: login as a user (with credentials)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/auth_login_post"
+        required: true
+      responses:
+        "200":
+          description: Logged in as user
+          headers:
+            Set-Cookie:
+              $ref: "#/components/headers/user_auth"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/reference"
+        "418":
+          description: Invalid credentials
+
+        "400":
+          $ref: "#/components/responses/400"
+
+  /auth/login-with-token:
+    post:
+      tags:
+        - authentication
+      summary: login as a user (with a token)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/auth_login_with_token_post"
+        required: true
+      responses:
+        "200":
+          description: Logged in as user
+          headers:
+            Set-Cookie:
+              $ref: "#/components/headers/user_auth"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/reference"
+        "418":
+          description: Invalid credentials
+
+        "400":
+          $ref: "#/components/responses/400"
+
+  /auth/check:
+    get:
+      tags:
+        - authentication
+      summary: Check if i am still authenticated (via the cookie)
+      responses:
+        "200":
+          description: You are authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/reference"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+
+  /auth/password-change:
+    post:
+      tags:
+        - authentication
+      summary: change your password
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/auth_password_change_post"
+        required: true
+      responses:
+        "200":
+          description: password changed
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+      security:
+        - user_auth: []
+
+  /auth/password-reset:
+    post:
+      tags:
+        - authentication
+      summary: request a password reset
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/auth_password_reset_post"
+        required: true
+      responses:
+        "200":
+          description: password reset process started
+
+        "400":
+          $ref: "#/components/responses/400"
+
+  /auth/password-set-initial:
+    post:
+      tags:
+        - authentication
+      summary: set your password the first time
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/auth_password_set_initial_post"
+        required: true
+      responses:
+        "200":
+          description: new password set
+        "418":
+          description: Invalid code
+
+        "401":
+          $ref: "#/components/responses/401"
+        "400":
+          $ref: "#/components/responses/400"
+      security:
+        - user_auth: []
+
+  /auth/password-set-new:
+    post:
+      tags:
+        - authentication
+      summary: set your new password
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/auth_password_set_new_post"
+        required: true
+      responses:
+        "200":
+          description: new password set
+        "418":
+          description: Invalid code
+
+        "400":
+          $ref: "#/components/responses/400"
+
+  /auth/register:
+    post:
+      deprecated: true
+      tags:
+        - authentication
+      summary: Register as new user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/auth_register_post"
+        required: true
+      responses:
+        "200":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/reference"
+
+        "400":
+          $ref: "#/components/responses/400"
+
+  /auth/logout:
+    post:
+      tags:
+        - authentication
+      summary: logout (delete auth cookie)
+      responses:
+        "200":
+          description: Logged out
+          headers:
+            Set-Cookie:
+              $ref: "#/components/headers/user_auth"
+
+  /auth/stream-token:
+    get:
+      tags:
+        - authentication
+      summary: get token for viewing streams
+      responses:
+        "200":
+          description: the token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/auth_stream_token"
+          headers:
+            Set-Cookie:
+              $ref: "#/components/headers/user_auth"
+
+        "401":
+          $ref: "#/components/responses/401"
+
+  # user
+
+  /user/{user_id}:
+    get:
+      tags:
+        - user
+      summary: Get a user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns a user definition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/user"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+    patch:
+      tags:
+        - user
+      summary: Modify an existing user. Each property is optional, only present properties will be updated in the database. Some properties cannot be changed!
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/user_patch"
+        required: true
+      responses:
+        "200":
+          description: User modified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/user_self"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /user/self:
+    get:
+      tags:
+        - user
+      summary: Get your user information
+      responses:
+        "200":
+          description: Returns your user definition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/user_self"
+
+        "401":
+          $ref: "#/components/responses/401"
+      security:
+        - user_auth: []
+
+  /user/my-organisations:
+    get:
+      tags:
+        - user
+        - organisations-and-teams
+      summary: Get all the organisations you have acess to
+      responses:
+        "200":
+          description: Returns organisations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/user_my_organisations"
+
+        "401":
+          $ref: "#/components/responses/401"
+      security:
+        - user_auth: []
+
+  /user/my-teams:
+    get:
+      tags:
+        - user
+        - organisations-and-teams
+      summary: Get all the teams you have acess to
+      responses:
+        "200":
+          description: Returns teams
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/user_my_teams"
+
+        "401":
+          $ref: "#/components/responses/401"
+      security:
+        - user_auth: []
+
+  /team:
+    post:
+      tags:
+        - organisations-and-teams
+      summary: Create a team
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/team_post"
+        required: true
+      responses:
+        "200":
+          description: Created team successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/reference"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+      security:
+        - user_auth: []
+
+  /team/all-teams:
+    get:
+      tags:
+        - organisations-and-teams
+      summary: Get all teams
+      responses:
+        "200":
+          description: Returns all teams
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/team_all_teams"
+
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+      security:
+        - user_auth: []
+
+  /team/{team_id}:
+    get:
+      tags:
+        - organisations-and-teams
+      summary: Get a team
+      parameters:
+        - name: team_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns a team definition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/team"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+    patch:
+      tags:
+        - organisations-and-teams
+      summary: Modify an existing team. Each property is optional, only present properties will be updated in the database. Some properties cannot be changed!
+      parameters:
+        - name: team_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/team_patch"
+        required: true
+      responses:
+        "200":
+          description: Team modified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/team"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /team/{team_id}/invite-member:
+    post:
+      tags:
+        - organisations-and-teams
+      summary: Invite someone to a team
+      parameters:
+        - name: team_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/team_invite_member"
+        required: true
+      responses:
+        "200":
+          description: Returns id of invited user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/team_invite_member_post_response"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+      security:
+        - user_auth: []
+
+  /team/{team_id}/members:
+    get:
+      tags:
+        - organisations-and-teams
+      summary: Get all team members
+      parameters:
+        - name: team_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns all team members
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/team_members"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /team/{team_id}/member/{user_id}:
+    delete:
+      tags:
+        - organisations-and-teams
+      summary: Remove member from team
+      parameters:
+        - name: team_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: OK
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+
+  /team/{team_id}/workspaces:
+    get:
+      tags:
+        - workspace
+      summary: Get the teams workspaces
+      parameters:
+        - name: team_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the workspaces of this team, workspaces come from different sources, either the team owns the workspace or the team has access to the workspace via permissions (in that case you can tell if the workspace belongs to the same organisation as the team by comparing team.organsiation_id with workspace.owner_organisation_id)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/team_workspaces"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  # organisation
+
+  /organisation/{organisation_id}:
+    get:
+      tags:
+        - organisations-and-teams
+      summary: Get a organisation
+      parameters:
+        - name: organisation_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns a organisation definition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/organisation"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+    patch:
+      tags:
+        - organisations-and-teams
+      summary: Modify an existing organisation. Each property is optional, only present properties will be updated in the database. Some properties cannot be changed!
+      parameters:
+        - name: organisation_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/organisation_patch"
+        required: true
+      responses:
+        "200":
+          description: User modified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/organisation"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /organisation/{organisation_id}/users:
+    get:
+      tags:
+        - organisations-and-teams
+      summary: Get all users inside an organisation
+      parameters:
+        - name: organisation_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/organisation_users"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /organisation/{organisation_id}/teams:
+    get:
+      tags:
+        - organisations-and-teams
+      summary: Get all organisation teams
+      parameters:
+        - name: organisation_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns all organisations teams
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/organisation_teams"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  # admin
+
+
+  /admin/users:
+    get:
+      tags:
+        - admin
+      summary: get all users
+      responses:
+        "200":
+          description: All users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/admin_users"
+
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+      security:
+        - user_auth: []
+    post:
+      tags:
+        - admin
+      summary: Create a user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/admin_users_post"
+        required: true
+      responses:
+        "200":
+          description: Created user successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/reference"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+      security:
+        - user_auth: []
+
+
+  /admin/organisations:
+    get:
+      tags:
+        - admin
+      summary: get all organisations
+      responses:
+        "200":
+          description: All organisations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/admin_organisations"
+
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+      security:
+        - user_auth: []
+
+    post:
+      tags:
+        - admin
+      summary: Create an organisation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/admin_organisation_post"
+        required: true
+      responses:
+        "200":
+          description: Created organisation successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/reference"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+      security:
+        - user_auth: []
+
+  /admin/system/performance/os:
+    get:
+      tags:
+        - admin
+      summary: Get performance information for operating system
+      responses:
+        "200":
+          description: Returns api info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/admin_system_performance_os"
+
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+      security:
+        - user_auth: []
+
+  /admin/system/performance/api-endpoints:
+    get:
+      tags:
+        - admin
+      summary: Get performance information for api endpoints
+      responses:
+        "200":
+          description: Returns api endpoint performance data for calls with status code >= 200 and < 400
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/admin_system_performance_api_endpoints"
+
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+      security:
+        - user_auth: []
+
+  /admin/system/performance/api-endpoint/details:
+    get:
+      tags:
+        - admin
+      summary: Get performance information for api endpoints
+      parameters:
+        - name: endpoint
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Returns api endpoint performance data for calls with status code >= 200 and < 400 for a specific endpoint
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/admin_system_performance_api_endpoint_detail"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+      security:
+        - user_auth: []
+
+  /admin/system/database/info:
+    get:
+      tags:
+        - admin
+      summary: Get information about the database
+      responses:
+        "200":
+          description: Returns database information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/admin_system_database_info"
+
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+      security:
+        - user_auth: []
+
+  # file
+
+  /file/{file_id}:
+    get:
+      tags:
+        - file
+      summary: Get a file
+      description: Only returns file meta data, For the actual file see /file/data
+      parameters:
+        - name: file_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns a file
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/file"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /file/get-multiple:
+    post:
+      tags:
+        - file
+      summary: Get multiple files at once
+      description: Only returns file meta data, For the actual file see /file/data
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/file_get_multiple_post"
+        required: true
+      responses:
+        "200":
+          description: Returns a file
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/file_get_multiple"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /file/data/{file_id}:
+    get:
+      x-no-sdk: true
+      tags:
+        - file
+      summary: Get a files data (to download or show as <img>)
+      parameters:
+        - name: file_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns a file
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /file/thumbnail/{file_id}:
+    get:
+      x-no-sdk: true
+      tags:
+        - file
+      summary: Get a files thumbnail (to download or show as <img>)
+      parameters:
+        - name: file_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns a file
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  # workspace
+
+  /workspace/my-workspaces:
+    get:
+      tags:
+        - workspace
+      summary: Get all your workspaces
+      responses:
+        "200":
+          description: Returns your workspaces
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/workspace"
+
+        "401":
+          $ref: "#/components/responses/401"
+      security:
+        - user_auth: []
+
+  /workspace:
+    post:
+      tags:
+        - workspace
+      summary: Create a workspace
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/workspaces_post"
+        required: true
+      responses:
+        "200":
+          description: Created workspace successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/reference"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+      security:
+        - connection_link_auth: []
+
+  /workspace/{workspace_id}:
+    get:
+      tags:
+        - workspace
+      summary: Get a workspace
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the workspace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/workspace"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+    patch:
+      tags:
+        - workspace
+      summary: Modify a workspace
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/workspace_patch"
+        required: true
+      responses:
+        "200":
+          description: Modified workspace successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/workspace"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+    delete:
+      tags:
+        - workspace
+      summary: Delete a workspace
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Deleted workspace successfully
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /workspace/{workspace_id}/file:
+    post:
+      tags:
+        - workspace
+      summary: Upload a file to a workspace
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/workspace_file_post"
+        required: true
+      responses:
+        "200":
+          description: Result (returns file id)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/reference"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /workspace/{workspace_id}/file/{file_id}:
+    patch:
+      tags:
+        - workspace
+      summary: Overwrite an existing file of a workspace
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+        - name: file_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/workspace_file_patch"
+        required: true
+      responses:
+        "200":
+          description: Result
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+    delete:
+      tags:
+        - workspace
+      summary: delete a file from a workspace
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+        - name: file_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Result
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /workspace/{workspace_id}/permissions:
+    get:
+      tags:
+        - workspace
+      summary: Get permissions to a workspace
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/workspace_permissions"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /workspace/{workspace_id}/invite-team:
+    post:
+      tags:
+        - workspace
+      summary: Invite a team to a workspace
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/workspace_invite_team_post"
+        required: true
+      responses:
+        "200":
+          description: OK
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /workspace/{workspace_id}/kick-team:
+    post:
+      tags:
+        - workspace
+      summary: Kicks a team from a workspace (remove permissions)
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/workspace_kick_team_post"
+        required: true
+      responses:
+        "200":
+          description: OK
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+
+  /workspace/{workspace_id}/files:
+    get:
+      tags:
+        - workspace
+      summary: Get all files for this workspace
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the files
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/workspace_files"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /workspace/{workspace_id}/missions:
+    get:
+      tags:
+        - workspace
+      summary: Get all missions for this workspace
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the missions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/workspace_missions"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+
+  /workspace/{workspace_id}/connections:
+    get:
+      tags:
+        - connection
+      summary: Get all connections for this workspace
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the connections
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/workspace_connections"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /connection:
+    post:
+      tags:
+        - connection
+      summary: Create a new connection for a workspace
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/connection_post"
+      responses:
+        "200":
+          description: Returns the connection credentials (used at the "/connection-link" endpoints)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/connection_post_response"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /connection/{connection_id}:
+    get:
+      tags:
+        - connection
+      summary: Get a connection
+      parameters:
+        - name: connection_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the connection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/connection"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+    delete:
+      tags:
+        - connection
+      summary: Delete a connection
+      parameters:
+        - name: connection_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Deleted the connection successfully
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+
+  /connection/{connection_id}/live-share-keys:
+    get:
+      tags:
+        - connection
+      summary: Get all live share keys for a connection
+      parameters:
+        - name: connection_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the connections live share keys
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/connection_live_share_keys_get"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+    post:
+      tags:
+        - connection
+      summary: Create a new live share key
+      parameters:
+        - name: connection_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/connection_live_share_keys_post"
+      responses:
+        "200":
+          description: Created a new key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/connection_live_share_keys_post_response"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+
+  /connection/{connection_id}/live-share-key/{live_share_key_id}:
+    delete:
+      tags:
+        - connection
+      summary: Delete a live share key
+      parameters:
+        - name: connection_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+        - name: live_share_key_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Deleted the key successfully
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /workspace/{workspace_id}/geo-objects:
+    get:
+      tags:
+        - workspace
+      summary: Get all geo objects for this workspace
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the geo objects
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/workspace_geo_objects_get"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+    post:
+      tags:
+        - workspace
+      summary: Create a geo object for a workspace
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/workspace_geo_objects_post"
+      responses:
+        "200":
+          description: Returns the id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/reference"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /workspace/{workspace_id}/geo-object/{geo_object_id}:
+    patch:
+      tags:
+        - workspace
+      summary: Modify a geo object
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+        - name: geo_object_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/workspace_geo_object_patch"
+        required: true
+      responses:
+        "200":
+          description: Geo Object was modified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/geo_object"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+    delete:
+      tags:
+        - workspace
+      summary: Delete a geo object
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+        - name: geo_object_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Deleted the geo object successfully
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /remote-controller/{remote_controller_id}:
+    get:
+      tags:
+        - remote-controller
+      summary: Get a remote controller
+      parameters:
+        - name: remote_controller_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the remote controller
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/remote_controller"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /remote-controller/{remote_controller_id}/last-position:
+    get:
+      tags:
+        - remote-controller
+      summary: Get the last remote controller position
+      parameters:
+        - name: remote_controller_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the remote controllers position
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/remote_controller_position"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /drone/{drone_id}:
+    get:
+      tags:
+        - drone
+      summary: Get a drone
+      parameters:
+        - name: drone_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the drone
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/drone"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /drone/{drone_id}/last-position:
+    get:
+      tags:
+        - drone
+      summary: Get the last positon of the drone
+      parameters:
+        - name: drone_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the drone last position
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/drone_position"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /drone/{drone_id}/last-battery:
+    get:
+      tags:
+        - drone
+      summary: Get the last battery information of the drone
+      parameters:
+        - name: drone_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the drone last battery information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/drone_battery"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /drone/{drone_id}/media:
+    get:
+      tags:
+        - drone
+      summary: Get all the uploaded media of this drone
+      parameters:
+        - name: drone_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the drones media
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/drone_media"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /drone/{drone_id}/flights:
+    get:
+      tags:
+        - drone
+      summary: Get all the flights of the drone
+      parameters:
+        - name: drone_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the drones flights
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/drone_flights"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /drone/{drone_id}/current-flight:
+    get:
+      tags:
+        - drone
+      summary: Get the current flight of the drone
+      parameters:
+        - name: drone_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the drones current flight (equivalent to /flight/{flight_id})
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/flight"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  # flight
+
+  /flight:
+    post:
+      tags:
+        - flight
+      summary: Create a flight manually
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/flight_post"
+        required: true
+      responses:
+        "200":
+          description: Flight was created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/reference"
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+      security:
+        - user_auth: []
+
+  /flight/{flight_id}:
+    get:
+      tags:
+        - flight
+      summary: Get a flight
+      parameters:
+        - name: flight_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the flight
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/flight"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+    patch:
+      tags:
+        - flight
+      summary: Modify a flight
+      parameters:
+        - name: flight_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/flight_patch"
+        required: true
+      responses:
+        "200":
+          description: Flight was modified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/flight"
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /flight/{flight_id}/media:
+    get:
+      tags:
+        - flight
+      summary: Get all the uploaded media of this flight
+      parameters:
+        - name: flight_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the flights media
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/flight_media"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /flight/{flight_id}/users:
+    get:
+      tags:
+        - flight
+      summary: Get all the users that participated in this flight
+      parameters:
+        - name: flight_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the flights users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/flight_users"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+    post:
+      tags:
+        - flight
+      summary: Create a user that participated in this flight
+      parameters:
+        - name: flight_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/flight_users_post"
+        required: true
+      responses:
+        "200":
+          description: OK
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /flight/{flight_id}/user/{user_id}:
+    delete:
+      tags:
+        - flight
+      summary: remove a participating user from a flight
+      parameters:
+        - name: flight_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: OK
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /media/{media_id}:
+    get:
+      tags:
+        - flight
+      summary: Get a uploaded media
+      parameters:
+        - name: media_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the media
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/media"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /media/ground-coverage/{media_id}:
+    get:
+      tags:
+        - flight
+      summary: get ground coverage for this media
+      parameters:
+        - name: media_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: ground coverage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/media_ground_coverage"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          description: ground coverage not available
+      security:
+        - user_auth: []
+
+  # mission
+
+  /mission:
+    post:
+      tags:
+        - missions-and-tasks
+      summary: Create a mission
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/mission_post"
+        required: true
+      responses:
+        "200":
+          description: Mission was created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/reference"
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+      security:
+        - user_auth: []
+
+  /mission/{mission_id}:
+    get:
+      tags:
+        - missions-and-tasks
+      summary: Get a mission
+      parameters:
+        - name: mission_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the mission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/mission"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+    patch:
+      tags:
+        - missions-and-tasks
+      summary: Modify a mission
+      parameters:
+        - name: mission_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/mission_patch"
+        required: true
+      responses:
+        "200":
+          description: mission_patch was modified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/mission"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /mission/{mission_id}/tasks:
+    get:
+      tags:
+        - missions-and-tasks
+      summary: Get all the tasks for this mission
+      parameters:
+        - name: mission_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the missions tasks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/mission_tasks"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /task:
+    post:
+      tags:
+        - missions-and-tasks
+      summary: Create a task
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/task_post"
+        required: true
+      responses:
+        "200":
+          description: task was created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/reference"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+      security:
+        - user_auth: []
+
+  /task/{task_id}:
+    get:
+      tags:
+        - missions-and-tasks
+      summary: Get a task
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns the task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/task"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+    patch:
+      tags:
+        - missions-and-tasks
+      summary: Modify a task
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/task_patch"
+        required: true
+      responses:
+        "200":
+          description: task was modified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/task"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+    delete:
+      tags:
+        - missions-and-tasks
+      summary: Delete a task
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: task was deleted
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+
+  /task/{task_id}/link-geo-object:
+    post:
+      tags:
+        - missions-and-tasks
+      summary: link geo object to task
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/task_link_geo_object"
+        required: true
+      responses:
+        "200":
+          description: geo object was linked
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+  /task/{task_id}/unlink-geo-object:
+    post:
+      tags:
+        - missions-and-tasks
+      summary: Unlink geo object from task
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/task_unlink_geo_object"
+        required: true
+      responses:
+        "200":
+          description: geo object was unlinked
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - user_auth: []
+
+
+  # connection-link
+
+  /connection-link/auth/check:
+    get:
+      tags:
+        - connection-link
+      summary: Check if the credentials are valid
+      responses:
+        "200":
+          description: are valid
+
+        "401":
+          $ref: "#/components/responses/401"
+
+  /connection-link/auth/login:
+    post:
+      tags:
+        - connection-link
+      summary: Login with credentials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/connection_link_auth_login_post"
+        required: true
+      responses:
+        "200":
+          description: Logged in successfully
+          headers:
+            Set-Cookie:
+              $ref: "#/components/headers/connection_link_auth"
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "418":
+          description: Invalid credentials
+
+  /connection-link/config:
+    get:
+      tags:
+        - connection-link
+      summary: Get config required for the OpenFlightHub ConnectLink SDK
+      responses:
+        "200":
+          description: Returns the config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/connection_link_config"
+
+        "401":
+          $ref: "#/components/responses/401"
+      security:
+        - connection_link_auth: []
+
+  /connection-link/reset-workspace-uuid:
+    post:
+      tags:
+        - connection-link
+      summary: Generates a new workspace uuid (important for dji pilot 2, in case of weird bugs)
+      responses:
+        "200":
+          description: Success (please use the /connection-link/config endpoint to get the updated config)
+
+        "401":
+          $ref: "#/components/responses/401"
+      security:
+        - connection_link_auth: []
+
+  /connection-link/dji-pilot-2/sdk-config:
+    get:
+      tags:
+        - connection-link
+      summary: Get config required for the OpenFlightHub ConnectLink SDK (when using dji pilot 2)
+      responses:
+        "200":
+          description: Returns the config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/connection_link_dji_pilot_2_sdk_config"
+
+        "401":
+          $ref: "#/components/responses/401"
+      security:
+        - connection_link_auth: []
+
+  /connection-link/dji-pilot-2/api/media/api/v1/workspaces/{workspace_uuid}/fast-upload:
+    post:
+      x-no-sdk: true
+      tags:
+        - dji-pilot-2-api
+      summary: Upload media from a dji pilot 2 remote controller
+      parameters:
+        - name: workspace_uuid
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/uuid"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/dji_pilot_2_api_media_fast_upload_post"
+      responses:
+        "200":
+          description: Returns upload status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/dji_pilot_2_api_media_fast_upload_post_response"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - dji_pilot_2_api: []
+
+  /connection-link/dji-pilot-2/api/media/api/v1/workspaces/{workspace_uuid}/files/tiny-fingerprints:
+    post:
+      x-no-sdk: true
+      tags:
+        - dji-pilot-2-api
+      summary: Get all existing tiny fingerprints of files from a dji pilot 2 remote controller
+      parameters:
+        - name: workspace_uuid
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/uuid"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/dji_pilot_2_api_media_files_tiny_fingerprints_post"
+      responses:
+        "200":
+          description: Returns existing fingerprints
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/dji_pilot_2_api_media_files_tiny_fingerprints_post_response"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - dji_pilot_2_api: []
+
+  /connection-link/dji-pilot-2/api/storage/api/v1/workspaces/{workspace_uuid}/sts:
+    post:
+      x-no-sdk: true
+      tags:
+        - dji-pilot-2-api
+      summary: Get a temporary access token to upload a media from a dji pilot 2 remote controller
+      parameters:
+        - name: workspace_uuid
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/id"
+      responses:
+        "200":
+          description: Returns existing fingerprints
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/dji_pilot_2_api_media_sts_post_response"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - dji_pilot_2_api: []
+
+  /connection-link/dji-pilot-2/api/media/api/v1/workspaces/{workspace_uuid}/upload-callback:
+    post:
+      x-no-sdk: true
+      tags:
+        - dji-pilot-2-api
+      summary: Get upload feedback from a dji pilot 2 remote controller
+      parameters:
+        - name: workspace_uuid
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/uuid"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/dji_pilot_2_api_media_upload_callback_post"
+      responses:
+        "200":
+          description: Returns
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/dji_pilot_2_api_media_upload_callback_post_response"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - dji_pilot_2_api: []
+
+  /connection-link/dji-pilot-2/api/media/api/v1/workspaces/{workspace_uuid}/group-upload-callback:
+    post:
+      x-no-sdk: true
+      tags:
+        - dji-pilot-2-api
+      summary: Get upload feedback from a dji pilot 2 remote controller
+      parameters:
+        - name: workspace_uuid
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/uuid"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/dji_pilot_2_api_media_group_upload_callback_post"
+      responses:
+        "200":
+          description: Returns
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/dji_pilot_2_api_media_group_upload_callback_post_response"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - dji_pilot_2_api: []
+
+  /connection-link/dji-pilot-2/api/map/api/v1/workspaces/{workspace_uuid}/element-groups/{group_uuid}/elements:
+    post:
+      x-no-sdk: true
+      tags:
+        - dji-pilot-2-api
+      summary: create map elements from a dji pilot 2 remote controller
+      parameters:
+        - name: workspace_uuid
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/uuid"
+        - name: group_uuid
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/uuid"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/dji_pilot_2_api_map_element_groups_elements_post"
+      responses:
+        "200":
+          description: Returns
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/dji_pilot_2_api_map_element_groups_elements_post_response"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - dji_pilot_2_api: []
+
+  /connection-link/dji-pilot-2/api/map/api/v1/workspaces/{workspace_uuid}/element-groups:
+    get:
+      x-no-sdk: true
+      tags:
+        - dji-pilot-2-api
+      summary: Get map elements from a dji pilot 2 remote controller
+      parameters:
+        - name: workspace_uuid
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/uuid"
+        - name: is_distributed
+          in: query
+          schema:
+            type: boolean
+            description: "element group distributed status (default value: true if not existent)"
+      responses:
+        "200":
+          description: Returns
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/dji_pilot_2_api_map_element_groups_get_response"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - dji_pilot_2_api: []
+
+  /connection-link/dji-pilot-2/api/map/api/v1/workspaces/{workspace_uuid}/elements/{element_uuid}:
+    put:
+      x-no-sdk: true
+      tags:
+        - dji-pilot-2-api
+      summary: update map elements from a dji pilot 2 remote controller
+      parameters:
+        - name: workspace_uuid
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/uuid"
+        - name: element_uuid
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/uuid"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/dji_pilot_2_api_map_elements_put"
+      responses:
+        "200":
+          description: Returns
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/dji_pilot_2_api_map_elements_put_response"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - dji_pilot_2_api: []
+
+    delete:
+      x-no-sdk: true
+      tags:
+        - dji-pilot-2-api
+      summary: delete map elements from a dji pilot 2 remote controller
+      parameters:
+        - name: workspace_uuid
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/uuid"
+        - name: element_uuid
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/uuid"
+      responses:
+        "200":
+          description: Returns
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/dji_pilot_2_api_map_elements_delete_response"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - dji_pilot_2_api: []
+
+  /connection-link/dji-pilot-2/api/manage/api/v1/workspaces/{workspace_uuid}/devices/topology:
+    get:
+      x-no-sdk: true
+      tags:
+        - dji-pilot-2-api
+      summary: get devices from workspace
+      parameters:
+        - name: workspace_uuid
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/uuid"
+      responses:
+        "200":
+          description: Returns
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/dji_pilot_2_api_manage_devices_topology_response"
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "410":
+          $ref: "#/components/responses/410"
+      security:
+        - dji_pilot_2_api: []
+
+
+
+  /info/collision-objects:
+    get:
+      tags:
+        - info
+      summary: Get collision objects in an area
+      parameters:
+        - name: longitude
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: latitude
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: radius
+          in: query
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Returns the collision objects
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/info_collision_objects"
+
+        "204":
+          description: No Content (api is fetching the data from 3rd party service, call this endpoint again later to receive the result)
+
+        "400":
+          $ref: "#/components/responses/400"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+      security:
+        - user_auth: []
+
+components:
+  schemas:
+    # data type
+
+    id:
+      type: number
+      example: 42
+
+    id_nullable:
+      type: number
+      nullable: true
+      example: 42
+
+    uuid:
+      type: string
+      example: "87ffce7c-da28-49cf-9134-8db9fd87ccd1"
+
+    unixms:
+      type: number
+      example: "1239213862"
+      description: Time in milliseconds since Unix Epoch time (January 1st, 1970 )
+
+    timestamptz:
+      type: string
+      format: timestamptz
+      description: ISO 8601 format with a timezone
+      example: "2023-12-11 23:06:52.7879+00"
+
+    timestamp:
+      type: string
+      format: timestamptz
+      description: ISO 8601 format without a timezone
+      example: "2023-12-11 23:06:52.7879"
+
+    email:
+      type: string
+      example: "john.doe@example.com"
+
+    password:
+      type: string
+      description: Maximum length is 72 Bytes (utf-8).
+      example: "j9876sa1kjhqsa6dtasd12="
+
+    size_in_bytes:
+      type: integer
+      description: in bytes
+
+    # general
+
+    reference:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          $ref: "#/components/schemas/id"
+
+    #routes
+
+    # auth
+
+    auth_login_post:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          $ref: "#/components/schemas/email"
+        password:
+          type: string
+
+    auth_login_with_token_post:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+
+    auth_register_post:
+      deprecated: true
+      type: object
+      required:
+        - name
+        - email
+      properties:
+        email:
+          $ref: "#/components/schemas/email"
+        password:
+          $ref: "#/components/schemas/password"
+
+    auth_password_change_post:
+      type: object
+      required:
+        - current_password
+        - new_password
+      properties:
+        current_password:
+          $ref: "#/components/schemas/password"
+        new_password:
+          $ref: "#/components/schemas/password"
+
+    auth_password_reset_post:
+      type: object
+      required:
+        - username
+      properties:
+        username:
+          $ref: "#/components/schemas/email"
+
+    auth_password_set_initial_post:
+      type: object
+      required:
+        - new_password
+      properties:
+        new_password:
+          $ref: "#/components/schemas/password"
+
+    auth_password_set_new_post:
+      type: object
+      required:
+        - new_password
+        - code
+      properties:
+        new_password:
+          $ref: "#/components/schemas/password"
+        code:
+          type: string
+
+    auth_stream_token:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+
+    # user
+
+    user:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          $ref: "#/components/schemas/id"
+        name:
+          type: string
+          example: Harry Potter
+        team_id:
+          $ref: "#/components/schemas/id"
+
+    user_self:
+      type: object
+      required:
+        - id
+        - name
+        - email
+        - created_at
+        - locale
+        - registration_incomplete
+      properties:
+        id:
+          $ref: "#/components/schemas/id"
+        name:
+          type: string
+          example: Harry Potter
+        email:
+          $ref: "#/components/schemas/email"
+        created_at:
+          $ref: "#/components/schemas/timestamptz"
+        locale:
+          type: string
+          example: en-US
+        registration_incomplete:
+          type: boolean
+        team_id:
+          $ref: "#/components/schemas/id"
+
+    user_patch:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Harry Potter
+        email:
+          $ref: "#/components/schemas/email"
+        locale:
+          type: string
+          example: en-US
+
+
+    user_my_organisations:
+      type: array
+      items:
+        type: object
+        required:
+          - id
+          - access_type
+        properties:
+          id:
+            $ref: "#/components/schemas/id"
+          access_type:
+            type: integer
+            description: 0 = owner, 1 = member
+
+
+    user_my_teams:
+      type: array
+      items:
+        type: object
+        required:
+          - id
+          - access_type
+        properties:
+          id:
+            $ref: "#/components/schemas/id"
+          access_type:
+            type: integer
+            description: 0 = owner, 1 = member
+
+    # team
+
+    team:
+      type: object
+      required:
+        - id
+        - name
+        - owner_user_id
+        - created_at
+        - state
+      properties:
+        id:
+          $ref: "#/components/schemas/id"
+        name:
+          type: string
+          example: Harry Potter
+        owner_user_id:
+          $ref: "#/components/schemas/id"
+        created_at:
+          $ref: "#/components/schemas/timestamptz"
+        state:
+          type: integer
+          description: 0 = invited, 1 = live, 2 = locked, 3 = deleted
+        organisation_id:
+          $ref: "#/components/schemas/id"
+        logo_file_id:
+          $ref: "#/components/schemas/id"
+
+    team_all_teams:
+      type: array
+      items:
+        type: object
+        required:
+          - id
+          - name
+        properties:
+          id:
+            $ref: "#/components/schemas/id"
+          name:
+            type: string
+          organisation_id:
+            $ref: "#/components/schemas/id"
+          logo_file_id:
+            $ref: "#/components/schemas/id"
+
+    team_post:
+      type: object
+      required:
+        - name
+        - organisation_id
+        - owner_user_id
+      properties:
+        name:
+          type: string
+          example: Harry Potter
+        organisation_id:
+          $ref: "#/components/schemas/id"
+        owner_user_id:
+          $ref: "#/components/schemas/id"
+        logo_file_id:
+          $ref: "#/components/schemas/id"
+
+    team_patch:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Harry Potter
+        logo_file_id:
+          $ref: "#/components/schemas/id_nullable"
+
+    team_invite_member:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          $ref: "#/components/schemas/email"
+
+    team_invite_member_post_response:
+      $ref: "#/components/schemas/reference"
+
+    team_members:
+      type: array
+      items:
+        type: object
+        required:
+          - id
+          - name
+        properties:
+          id:
+            $ref: "#/components/schemas/id"
+          name:
+            type: string
+            example: Harry Potter
+
+
+    team_workspaces:
+      type: array
+      items:
+        $ref: "#/components/schemas/workspace"
+
+    # organisation
+
+    organisation:
+      type: object
+      required:
+        - id
+        - name
+        - owner_user_id
+        - created_at
+        - state
+      properties:
+        id:
+          $ref: "#/components/schemas/id"
+        name:
+          type: string
+          example: Harry Potter
+        owner_user_id:
+          $ref: "#/components/schemas/id"
+        created_at:
+          $ref: "#/components/schemas/timestamptz"
+        state:
+          type: integer
+          description: 0 = invited, 1 = live, 2 = locked, 3 = deleted
+        logo_file_id:
+          $ref: "#/components/schemas/id"
+
+    organisation_patch:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Harry Potter
+        logo_file_id:
+          $ref: "#/components/schemas/id_nullable"
+
+    organisation_users:
+      type: array
+      items:
+        $ref: "#/components/schemas/user"
+
+    organisation_teams:
+      type: array
+      items:
+        type: object
+        required:
+          - id
+          - name
+        properties:
+          id:
+            $ref: "#/components/schemas/id"
+          name:
+            type: string
+            example: Harry Potter
+
+    # admin
+
+    admin_users:
+      type: array
+      items:
+        $ref: "#/components/schemas/user_self"
+
+    admin_users_post:
+      type: object
+      required:
+        - email
+      properties:
+        name:
+          type: string
+          example: Harry Potter
+        email:
+          $ref: "#/components/schemas/email"
+
+    admin_organisations:
+      type: array
+      items:
+        $ref: "#/components/schemas/organisation"
+
+    admin_organisation_post:
+      type: object
+      required:
+        - name
+        - owner_user_id
+      properties:
+        name:
+          type: string
+          example: Harry Potter
+        owner_user_id:
+          $ref: "#/components/schemas/id"
+        logo_file_id:
+          $ref: "#/components/schemas/id"
+
+
+    admin_system_performance_os:
+      type: object
+      required:
+        - os
+        - cpu
+        - uptime
+        - ram_total
+        - ram_free
+        - load_avg
+      properties:
+        os:
+          type: string
+        cpu:
+          type: string
+        uptime:
+          type: number
+          description: in milliseconds
+        ram_total:
+          type: number
+          description: in bytes
+        ram_free:
+          type: number
+          description: in bytes
+        load_avg:
+          type: object
+          required:
+            - avg_1
+            - avg_5
+            - avg_15
+          properties:
+            avg_1:
+              type: number
+              description: last 1 minute (0-1)
+            avg_5:
+              type: number
+              description: last 5 minutes (0-1)
+            avg_15:
+              type: number
+              description: last 15 minutes (0-1)
+
+    admin_system_performance_api_endpoints:
+      type: array
+      items:
+        type: object
+        required:
+          - endpoint
+          - http_method
+          - total_calls
+          - max_run_time
+          - max_work_time
+          - avg_run_time
+          - avg_work_time
+          - pop_standard_dev_run_time
+          - pop_standard_dev_work_time
+          - pop_standard_dev_run_time_fractional
+          - pop_standard_dev_work_time_fractional
+        properties:
+          endpoint:
+            type: string
+          http_method:
+            type: string
+          total_calls:
+            type: number
+          max_run_time:
+            type: number
+            description: time until the response for this request has been sent (milliseconds)
+          max_work_time:
+            type: number
+            description: approximate time the cpu has worked on this (not accurate) (milliseconds)
+          avg_run_time:
+            type: number
+            description: arithmetic mean (milliseconds)
+          avg_work_time:
+            type: number
+            description: arithmetic mean (milliseconds)
+          pop_standard_dev_run_time:
+            type: number
+            description: population standard deviation (milliseconds)
+          pop_standard_dev_work_time:
+            type: number
+            description: population standard deviation (milliseconds)
+          pop_standard_dev_run_time_fractional:
+            type: number
+            description: population standard deviation relative to arithmetic mean (pop standard deviation / arithmetic mean)
+          pop_standard_dev_work_time_fractional:
+            type: number
+            description: population standard deviation relative to arithmetic mean (pop standard deviation / arithmetic mean)
+
+    admin_system_performance_api_endpoint_detail:
+      type: array
+      items:
+        type: object
+        required:
+          - url
+          - http_method
+          - total_calls
+          - max_run_time
+          - max_work_time
+          - avg_run_time
+          - avg_work_time
+          - pop_standard_dev_run_time
+          - pop_standard_dev_work_time
+          - pop_standard_dev_run_time_fractional
+          - pop_standard_dev_work_time_fractional
+        properties:
+          url:
+            type: string
+          http_method:
+            type: string
+          total_calls:
+            type: number
+          max_run_time:
+            type: number
+            description: time until the response for this request has been sent (milliseconds)
+          max_work_time:
+            type: number
+            description: approximate time the cpu has worked on this (not accurate) (milliseconds)
+          avg_run_time:
+            type: number
+            description: arithmetic mean (milliseconds)
+          avg_work_time:
+            type: number
+            description: arithmetic mean (milliseconds)
+          pop_standard_dev_run_time:
+            type: number
+            description: population standard deviation (milliseconds)
+          pop_standard_dev_work_time:
+            type: number
+            description: population standard deviation (milliseconds)
+          pop_standard_dev_run_time_fractional:
+            type: number
+            description: population standard deviation relative to arithmetic mean (pop standard deviation / arithmetic mean)
+          pop_standard_dev_work_time_fractional:
+            type: number
+            description: population standard deviation relative to arithmetic mean (pop standard deviation / arithmetic mean)
+
+
+    admin_system_database_info:
+      type: object
+      required:
+        - tables
+        - database
+      properties:
+        tables:
+          type: array
+          items:
+            type: object
+            required:
+              - name
+              - size
+              - row_count
+            properties:
+              name:
+                type: string
+              size:
+                $ref: "#/components/schemas/size_in_bytes"
+              row_count:
+                type: integer
+                description: estimated
+        database:
+          type: object
+          required:
+            - size
+            - version
+          properties:
+            size:
+              $ref: "#/components/schemas/size_in_bytes"
+            version:
+              type: string
+
+
+    # file
+
+    file:
+      type: object
+      required:
+        - id
+        - name
+        - created_at
+      properties:
+        id:
+          $ref: "#/components/schemas/id"
+        name:
+          type: string
+        created_at:
+          $ref: "#/components/schemas/timestamptz"
+        thumbnail_format:
+          type: string
+          description: e.g. jpg (not null if a thumbnail is available at /file/thumbnail/)
+
+    file_get_multiple:
+      type: array
+      items:
+        $ref: "#/components/schemas/file"
+
+    file_get_multiple_post:
+      type: object
+      required:
+        - ids
+      properties:
+        ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/id"
+
+    # workspace
+
+
+    workspace:
+      oneOf:
+        - $ref: "#/components/schemas/workspace_for_team"
+        - $ref: "#/components/schemas/workspace_for_organisation"
+
+    workspace_for_organisation:
+      type: object
+      required:
+        - id
+        - name
+        - longitude
+        - latitude
+        - owner_organisation_id
+      properties:
+        id:
+          $ref: "#/components/schemas/id"
+        name:
+          type: string
+        longitude:
+          type: number
+        latitude:
+          type: number
+        owner_organisation_id:
+          $ref: "#/components/schemas/id"
+
+    workspace_for_team:
+      type: object
+      required:
+        - id
+        - name
+        - longitude
+        - latitude
+        - owner_team_id
+      properties:
+        id:
+          $ref: "#/components/schemas/id"
+        name:
+          type: string
+        longitude:
+          type: number
+        latitude:
+          type: number
+        owner_team_id:
+          $ref: "#/components/schemas/id"
+
+    workspace_patch:
+      type: object
+      properties:
+        name:
+          type: string
+        longitude:
+          type: number
+        latitude:
+          type: number
+
+    workspaces_post:
+      oneOf:
+        - $ref: "#/components/schemas/workspaces_post_for_team"
+        - $ref: "#/components/schemas/workspaces_post_for_organisation"
+
+    workspaces_post_for_team:
+      type: object
+      required:
+        - name
+        - longitude
+        - latitude
+        - team_id
+      properties:
+        name:
+          type: string
+        longitude:
+          type: number
+        latitude:
+          type: number
+        team_id:
+          $ref: "#/components/schemas/id"
+
+    workspaces_post_for_organisation:
+      type: object
+      required:
+        - name
+        - longitude
+        - latitude
+        - organisation_id
+      properties:
+        name:
+          type: string
+        longitude:
+          type: number
+        latitude:
+          type: number
+        organisation_id:
+          $ref: "#/components/schemas/id"
+
+    workspace_files:
+      type: array
+      items:
+        $ref: "#/components/schemas/file"
+
+    workspace_file_post:
+      type: object
+      required:
+        - file
+        - filename
+      properties:
+        file:
+          type: string
+          format: binary
+        filename:
+          type: string
+
+    workspace_file_patch:
+      type: object
+      properties:
+        filename:
+          type: string
+
+    workspace_invite_team_post:
+      type: object
+      required:
+        - team_id
+      properties:
+        team_id:
+          $ref: "#/components/schemas/id"
+
+    workspace_kick_team_post:
+      type: object
+      required:
+        - team_id
+      properties:
+        team_id:
+          $ref: "#/components/schemas/id"
+
+    workspace_permissions:
+      type: array
+      items:
+        type: object
+        required:
+          - team_id
+        properties:
+          team_id:
+            $ref: "#/components/schemas/id"
+
+
+    workspace_missions:
+      type: array
+      items:
+        $ref: "#/components/schemas/mission"
+
+    workspace_connections:
+      type: array
+      items:
+        $ref: "#/components/schemas/connection"
+
+    connection_post:
+      type: object
+      required:
+        - name
+        - workspace_id
+      properties:
+        name:
+          type: string
+        workspace_id:
+          $ref: "#/components/schemas/id"
+
+    connection_post_response:
+      type: object
+      required:
+        - connection_id
+        - secret
+      properties:
+        connection_id:
+          type: string
+        secret:
+          type: string
+
+    connection:
+      type: object
+      description: "property `drone_id`: the currently connected drone (does not mean that the drone is currently online)"
+      required:
+        - id
+        - name
+        - workspace_id
+        - stream_is_alive
+      properties:
+        id:
+          $ref: "#/components/schemas/id"
+        name:
+          type: string
+        remote_controller_id:
+          $ref: "#/components/schemas/id"
+        drone_id:
+          $ref: "#/components/schemas/id"
+        workspace_id:
+          $ref: "#/components/schemas/id"
+        stream_is_alive:
+          type: boolean
+
+    connection_live_share_keys_post:
+      type: object
+      properties:
+        valid_until:
+          $ref: "#/components/schemas/timestamptz"
+        name:
+          type: string
+
+    connection_live_share_keys_post_response:
+      $ref: "#/components/schemas/connection_live_share_key"
+
+    connection_live_share_keys_get:
+      type: array
+      items:
+        $ref: "#/components/schemas/connection_live_share_key"
+
+    connection_live_share_key:
+      type: object
+      required:
+        - id
+        - key
+        - connection_id
+        - created_by
+        - created_at
+        - valid_until
+      properties:
+        id:
+          $ref: "#/components/schemas/id"
+        key:
+          type: string
+        name:
+          type: string
+        connection_id:
+          $ref: "#/components/schemas/id"
+        created_by:
+          $ref: "#/components/schemas/id"
+        created_at:
+            $ref: "#/components/schemas/timestamptz"
+        valid_until:
+          $ref: "#/components/schemas/timestamptz"
+
+    workspace_geo_objects_get:
+      type: array
+      items:
+        $ref: "#/components/schemas/geo_object"
+
+    workspace_geo_objects_post:
+      $ref: "#/components/schemas/geo_object_create"
+
+    workspace_geo_object_patch:
+      $ref: "#/components/schemas/geo_object_patch"
+
+    geo_object:
+      anyOf:
+        - $ref: "#/components/schemas/geo_object_type0"
+        - $ref: "#/components/schemas/geo_object_type1"
+        - $ref: "#/components/schemas/geo_object_type2"
+        - $ref: "#/components/schemas/geo_object_type3"
+
+    geo_object_base:
+      type: object
+      required:
+        - id
+        - uuid
+        - name
+        - created_at
+        - updated_at
+        - type
+        - sub_type
+        - tasks
+      properties:
+        id:
+          $ref: "#/components/schemas/id"
+        uuid:
+          $ref: "#/components/schemas/uuid"
+        workspace_id:
+          $ref: "#/components/schemas/id"
+        name:
+          type: string
+        created_at:
+          $ref: "#/components/schemas/timestamptz"
+        updated_at:
+          $ref: "#/components/schemas/timestamptz"
+        type:
+          type: integer
+        sub_type:
+          type: integer
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/reference"
+      description: "if workspace_id is not present, it is a global geoobject"
+
+    geo_object_type0:
+      anyOf:
+        - $ref: "#/components/schemas/geo_object_type0_subtype0"
+        - $ref: "#/components/schemas/geo_object_type0_subtype1"
+        - $ref: "#/components/schemas/geo_object_type0_subtype2"
+        - $ref: "#/components/schemas/geo_object_type0_subtype3"
+
+    geo_object_type0_subtype0:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_base"
+        - type: object
+          required:
+            - type
+            - sub_type
+            - config
+          properties:
+            type:
+              type: integer
+              x-const: 0
+            sub_type:
+              type: integer
+              x-const: 0
+            config:
+              $ref: "#/components/schemas/geo_object_type0_subtype0_config"
+
+    geo_object_type0_subtype0_config:
+      type: object
+      required:
+        - point
+        - color
+      properties:
+        point:
+          type: array
+          items:
+            type: number
+          minItems: 3
+          maxItems: 3
+          description: "[lng, lat, elevation]"
+
+        color:
+          type: string
+          description: hex
+
+    geo_object_type0_subtype1:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_base"
+        - type: object
+          required:
+            - type
+            - sub_type
+            - config
+          properties:
+            type:
+              type: integer
+              x-const: 0
+            sub_type:
+              type: integer
+              x-const: 1
+            config:
+              $ref: "#/components/schemas/geo_object_type0_subtype1_config"
+
+    geo_object_type0_subtype1_config:
+      type: object
+      required:
+        - line
+        - color
+      properties:
+        line:
+          type: array
+          items:
+            type: array
+            items:
+              type: number
+            minItems: 3
+            maxItems: 3
+          description: "[[lng, lat, elevation], [lng, lat, elevation]]"
+        color:
+          type: string
+          description: hex
+
+    geo_object_type0_subtype2:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_base"
+        - type: object
+          required:
+            - type
+            - sub_type
+            - config
+          properties:
+            type:
+              type: integer
+              x-const: 0
+            sub_type:
+              type: integer
+              x-const: 2
+            config:
+              $ref: "#/components/schemas/geo_object_type0_subtype2_config"
+
+    geo_object_type0_subtype2_config:
+      type: object
+      required:
+        - polygon
+        - color
+      properties:
+        polygon:
+          type: array
+          items:
+            type: array
+            items:
+              type: number
+            minItems: 3
+            maxItems: 3
+          description: "[[lng, lat, elevation], [lng, lat, elevation]]"
+        color:
+          type: string
+          description: hex
+
+    geo_object_type0_subtype3:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_base"
+        - type: object
+          required:
+            - type
+            - sub_type
+            - config
+          properties:
+            type:
+              type: integer
+              x-const: 0
+            sub_type:
+              type: integer
+              x-const: 3
+            config:
+              $ref: "#/components/schemas/geo_object_type0_subtype3_config"
+
+    geo_object_type0_subtype3_config:
+      type: object
+      required:
+        - center
+        - radius
+        - color
+      properties:
+        center:
+          type: array
+          items:
+            type: number
+          minItems: 3
+          maxItems: 3
+          description: "[lng, lat, elevation]"
+        radius:
+          type: number
+        color:
+          type: string
+          description: hex
+
+    geo_object_type1:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_base"
+        - type: object
+          required:
+            - type
+            - sub_type
+            - config
+          properties:
+            type:
+              type: integer
+              x-const: 1
+            sub_type:
+              type: integer
+              description: "other: 0, moto_glider: 1, tow_plane: 2, helicopter: 3, parachute: 4, drop_plane: 5, hang_glider: 6, para_glider: 7, powered_aircraft: 8, jet_aicraft: 9, ufo: 10, balloon: 11, airship: 12, uav: 13, ground_support: 14, static_object: 15"
+            config:
+              $ref: "#/components/schemas/geo_object_type1_config"
+
+    geo_object_type1_config:
+      type: object
+      required:
+        - longitude
+        - latitude
+      properties:
+        longitude:
+          type: number
+        latitude:
+          type: number
+        height:
+          type: number
+        heading:
+          type: number
+        speed:
+          type: number
+          description: TODO unit
+
+    geo_object_type2:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_base"
+        - type: object
+          required:
+            - type
+            - sub_type
+            - config
+          properties:
+            type:
+              type: integer
+              x-const: 2
+            sub_type:
+              type: integer
+            config:
+              $ref: "#/components/schemas/geo_object_type2_config"
+
+    geo_object_type2_config:
+      type: object
+      required:
+        - longitude
+        - latitude
+        - symbol
+      properties:
+        longitude:
+          type: number
+        latitude:
+          type: number
+        symbol:
+          type: string
+        height:
+          type: number
+        heading:
+          type: number
+        speed:
+          type: number
+          description: TODO unit
+
+
+    geo_object_type3:
+      anyOf:
+        - $ref: "#/components/schemas/geo_object_type3_subtype0"
+        - $ref: "#/components/schemas/geo_object_type3_subtype1"
+        - $ref: "#/components/schemas/geo_object_type3_subtype2"
+        - $ref: "#/components/schemas/geo_object_type3_subtype3"
+        - $ref: "#/components/schemas/geo_object_type3_subtype4"
+        - $ref: "#/components/schemas/geo_object_type3_subtype5"
+        - $ref: "#/components/schemas/geo_object_type3_subtype6"
+
+    geo_object_type3_subtype0:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_base"
+        - type: object
+          required:
+            - type
+            - sub_type
+            - config
+          properties:
+            type:
+              type: integer
+              x-const: 3
+            sub_type:
+              type: integer
+              x-const: 0
+            config:
+              $ref: "#/components/schemas/geo_object_type3_subtype0_config"
+
+    geo_object_type3_subtype0_config:
+      type: object
+      required:
+        - id
+        - point
+      properties:
+        id:
+          type: number
+        point:
+          type: array
+          items:
+            type: number
+          minItems: 3
+          maxItems: 3
+          description: "[lng, lat, elevation]"
+
+    geo_object_type3_subtype1:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_base"
+        - type: object
+          required:
+            - type
+            - sub_type
+            - config
+          properties:
+            type:
+              type: integer
+              x-const: 3
+            sub_type:
+              type: integer
+              x-const: 1
+            config:
+              $ref: "#/components/schemas/geo_object_type3_subtype1_config"
+
+    geo_object_type3_subtype1_config:
+      type: object
+      required:
+        - id
+        - point
+      properties:
+        id:
+          type: number
+        point:
+          type: array
+          items:
+            type: number
+          minItems: 3
+          maxItems: 3
+          description: "[lng, lat, elevation]"
+
+    geo_object_type3_subtype2:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_base"
+        - type: object
+          required:
+            - type
+            - sub_type
+            - config
+          properties:
+            type:
+              type: integer
+              x-const: 3
+            sub_type:
+              type: integer
+              x-const: 2
+            config:
+              $ref: "#/components/schemas/geo_object_type3_subtype2_config"
+
+    geo_object_type3_subtype2_config:
+      type: object
+      required:
+        - id
+        - line
+      properties:
+        id:
+          type: number
+        line:
+          type: array
+          items:
+            type: array
+            items:
+              type: number
+            minItems: 3
+            maxItems: 3
+          description: "[[lng, lat, elevation], [lng, lat, elevation]]"
+
+    geo_object_type3_subtype3:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_base"
+        - type: object
+          required:
+            - type
+            - sub_type
+            - config
+          properties:
+            type:
+              type: integer
+              x-const: 3
+            sub_type:
+              type: integer
+              x-const: 3
+            config:
+              $ref: "#/components/schemas/geo_object_type3_subtype3_config"
+
+    geo_object_type3_subtype3_config:
+      type: object
+      required:
+        - id
+        - line
+      properties:
+        id:
+          type: number
+        line:
+          type: array
+          items:
+            type: array
+            items:
+              type: number
+            minItems: 3
+            maxItems: 3
+          description: "[[lng, lat, elevation], [lng, lat, elevation]]"
+
+    geo_object_type3_subtype4:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_base"
+        - type: object
+          required:
+            - type
+            - sub_type
+            - config
+          properties:
+            type:
+              type: integer
+              x-const: 3
+            sub_type:
+              type: integer
+              x-const: 4
+            config:
+              $ref: "#/components/schemas/geo_object_type3_subtype4_config"
+
+    geo_object_type3_subtype4_config:
+      type: object
+      required:
+        - id
+        - point
+      properties:
+        id:
+          type: number
+        point:
+          type: array
+          items:
+            type: number
+          minItems: 3
+          maxItems: 3
+          description: "[lng, lat, elevation]"
+
+    geo_object_type3_subtype5:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_base"
+        - type: object
+          required:
+            - type
+            - sub_type
+            - config
+          properties:
+            type:
+              type: integer
+              x-const: 3
+            sub_type:
+              type: integer
+              x-const: 5
+            config:
+              $ref: "#/components/schemas/geo_object_type3_subtype5_config"
+
+    geo_object_type3_subtype5_config:
+      type: object
+      required:
+        - id
+        - line
+      properties:
+        id:
+          type: number
+        line:
+          type: array
+          items:
+            type: array
+            items:
+              type: number
+            minItems: 3
+            maxItems: 3
+          description: "[[lng, lat, elevation], [lng, lat, elevation]]"
+
+    geo_object_type3_subtype6:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_base"
+        - type: object
+          required:
+            - type
+            - sub_type
+            - config
+          properties:
+            type:
+              type: integer
+              x-const: 3
+            sub_type:
+              type: integer
+              x-const: 6
+            config:
+              $ref: "#/components/schemas/geo_object_type3_subtype6_config"
+
+    geo_object_type3_subtype6_config:
+      type: object
+      required:
+        - id
+        - polygon
+      properties:
+        id:
+          type: number
+        polygon:
+          type: array
+          items:
+            type: array
+            items:
+              type: number
+            minItems: 3
+            maxItems: 3
+          description: "[[lng, lat, elevation], [lng, lat, elevation]]"
+
+    geo_object_create:
+      anyOf:
+        - $ref: "#/components/schemas/geo_object_type0_create"
+        - $ref: "#/components/schemas/geo_object_type1_create"
+        - $ref: "#/components/schemas/geo_object_type2_create"
+
+    geo_object_create_base:
+      type: object
+      required:
+        - name
+        - type
+        - sub_type
+      properties:
+        uuid:
+          $ref: "#/components/schemas/uuid"
+        name:
+          type: string
+        type:
+          type: number
+        sub_type:
+          type: number
+
+    geo_object_type0_create:
+      anyOf:
+        - $ref: "#/components/schemas/geo_object_type0_subtype0_create"
+        - $ref: "#/components/schemas/geo_object_type0_subtype1_create"
+        - $ref: "#/components/schemas/geo_object_type0_subtype2_create"
+        - $ref: "#/components/schemas/geo_object_type0_subtype3_create"
+
+    geo_object_type0_subtype0_create:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_create_base"
+        - type: object
+          required:
+            - config
+            - type
+            - sub_type
+          properties:
+            type:
+              type: integer
+              x-const: 0
+              description: "0"
+            sub_type:
+              type: integer
+              x-const: 0
+              description: "0"
+            config:
+              $ref: "#/components/schemas/geo_object_type0_subtype0_config"
+
+    geo_object_type0_subtype1_create:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_create_base"
+        - type: object
+          required:
+            - config
+            - type
+            - sub_type
+          properties:
+            type:
+              type: integer
+              x-const: 0
+              description: "0"
+            sub_type:
+              type: integer
+              x-const: 1
+              description: "1"
+            config:
+              $ref: "#/components/schemas/geo_object_type0_subtype1_config"
+
+    geo_object_type0_subtype2_create:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_create_base"
+        - type: object
+          required:
+            - config
+            - type
+            - sub_type
+          properties:
+            type:
+              type: integer
+              x-const: 0
+              description: "0"
+            sub_type:
+              type: integer
+              x-const: 2
+              description: "2"
+            config:
+              $ref: "#/components/schemas/geo_object_type0_subtype2_config"
+
+    geo_object_type0_subtype3_create:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_create_base"
+        - type: object
+          required:
+            - config
+            - type
+            - sub_type
+          properties:
+            type:
+              type: integer
+              x-const: 0
+              description: "0"
+            sub_type:
+              type: integer
+              x-const: 3
+              description: "3"
+            config:
+              $ref: "#/components/schemas/geo_object_type0_subtype3_config"
+
+    geo_object_type1_create:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_create_base"
+        - type: object
+          required:
+            - config
+            - type
+            - sub_type
+          properties:
+            type:
+              type: integer
+              x-const: 1
+              description: "1"
+            sub_type:
+              type: integer
+              minimum: 0
+              maximum: 4
+            config:
+              $ref: "#/components/schemas/geo_object_type1_config"
+
+    geo_object_type2_create:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_create_base"
+        - type: object
+          required:
+            - config
+            - type
+            - sub_type
+          properties:
+            type:
+              type: integer
+              x-const: 2
+              description: "2"
+            sub_type:
+              type: integer
+              minimum: 0
+              maximum: 6
+            config:
+              $ref: "#/components/schemas/geo_object_type2_config"
+
+    geo_object_patch:
+      anyOf:
+        - $ref: "#/components/schemas/geo_object_type0_patch"
+        - $ref: "#/components/schemas/geo_object_type1_patch"
+        - $ref: "#/components/schemas/geo_object_type2_patch"
+
+    geo_object_patch_base:
+      type: object
+      properties:
+        name:
+          type: string
+
+    geo_object_type0_patch:
+      anyOf:
+        - $ref: "#/components/schemas/geo_object_type0_subtype0_patch"
+        - $ref: "#/components/schemas/geo_object_type0_subtype1_patch"
+        - $ref: "#/components/schemas/geo_object_type0_subtype2_patch"
+        - $ref: "#/components/schemas/geo_object_type0_subtype3_patch"
+
+    geo_object_type0_subtype0_patch:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_patch_base"
+        - type: object
+          properties:
+            config:
+              $ref: "#/components/schemas/geo_object_type0_subtype0_config"
+
+    geo_object_type0_subtype1_patch:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_patch_base"
+        - type: object
+          properties:
+            config:
+              $ref: "#/components/schemas/geo_object_type0_subtype1_config"
+
+    geo_object_type0_subtype2_patch:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_patch_base"
+        - type: object
+          properties:
+            config:
+              $ref: "#/components/schemas/geo_object_type0_subtype2_config"
+
+    geo_object_type0_subtype3_patch:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_patch_base"
+        - type: object
+          properties:
+            config:
+              $ref: "#/components/schemas/geo_object_type0_subtype3_config"
+
+    geo_object_type1_patch:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_patch_base"
+        - type: object
+          properties:
+            config:
+              $ref: "#/components/schemas/geo_object_type1_config"
+
+    geo_object_type2_patch:
+      allOf:
+        - $ref: "#/components/schemas/geo_object_patch_base"
+        - type: object
+          properties:
+            config:
+              $ref: "#/components/schemas/geo_object_type2_config"
+
+    remote_controller:
+      type: object
+      required:
+        - id
+        - serial_number
+        - type
+      properties:
+        id:
+          $ref: "#/components/schemas/id"
+        serial_number:
+          type: string
+        type:
+          $ref: "#/components/schemas/remote_controller_type"
+
+    remote_controller_type:
+      type: integer
+      description: 0 = dji rc pro enterprise, 1 = dji rc plus
+
+    remote_controller_position:
+      type: object
+      required:
+        - longitude
+        - latitude
+        - height
+        - reported_at
+      properties:
+        longitude:
+          type: number
+        latitude:
+          type: number
+        height:
+          type: number
+        reported_at:
+          $ref: "#/components/schemas/timestamptz"
+
+    drone:
+      type: object
+      required:
+        - id
+        - serial_number
+        - type
+        - name
+      properties:
+        id:
+          $ref: "#/components/schemas/id"
+        serial_number:
+          type: string
+        type:
+          $ref: "#/components/schemas/drone_type"
+        name:
+          type: string
+        last_connection_id:
+          $ref: "#/components/schemas/id"
+
+    drone_type:
+      type: integer
+      description: 0 = dji mavic 3
+
+    drone_position:
+      type: object
+      required:
+        - longitude
+        - latitude
+        - height
+        - reported_at
+      properties:
+        longitude:
+          type: number
+        latitude:
+          type: number
+        height:
+          type: number
+        reported_at:
+          $ref: "#/components/schemas/timestamptz"
+
+    drone_battery:
+      type: object
+      required:
+        - capacity_percent_left
+        - reported_at
+      properties:
+        capacity_percent_left:
+          type: number
+        reported_at:
+          $ref: "#/components/schemas/timestamptz"
+
+    drone_media:
+      type: array
+      items:
+        $ref: "#/components/schemas/media"
+
+    drone_flights:
+      type: array
+      items:
+        $ref: "#/components/schemas/flight"
+
+    flight:
+      type: object
+      required:
+        - id
+        - drone_id
+        - started_at
+        - track
+        - is_created_manually
+        - is_changed_manually
+      properties:
+        id:
+          $ref: "#/components/schemas/id"
+        drone_id:
+          $ref: "#/components/schemas/id"
+        started_at:
+          $ref: "#/components/schemas/timestamptz"
+        landed_at:
+          $ref: "#/components/schemas/timestamptz"
+        ended_at:
+          $ref: "#/components/schemas/timestamptz"
+        track:
+          type: array
+          items:
+            type: object
+            required:
+              - height
+              - longitude
+              - latitude
+              - time
+            properties:
+              height:
+                type: number
+              longitude:
+                type: number
+              latitude:
+                type: number
+              time:
+                $ref: "#/components/schemas/timestamptz"
+        is_created_manually:
+          type: boolean
+        is_changed_manually:
+          type: boolean
+          description: if this is true, updated_by will be have the id of the user that performed the last edit
+        updated_by:
+          $ref: "#/components/schemas/id"
+
+    flight_post:
+      type: object
+      required:
+        - drone_id
+        - started_at
+      properties:
+        drone_id:
+          $ref: "#/components/schemas/id"
+        started_at:
+          $ref: "#/components/schemas/timestamptz"
+        landed_at:
+          $ref: "#/components/schemas/timestamptz"
+        ended_at:
+          $ref: "#/components/schemas/timestamptz"
+        track:
+          type: array
+          items:
+            type: object
+            required:
+              - height
+              - longitude
+              - latitude
+              - time
+            properties:
+              height:
+                type: number
+              longitude:
+                type: number
+              latitude:
+                type: number
+              time:
+                $ref: "#/components/schemas/timestamptz"
+
+    flight_patch:
+      type: object
+      properties:
+        started_at:
+          $ref: "#/components/schemas/timestamptz"
+        landed_at:
+          $ref: "#/components/schemas/timestamptz"
+        ended_at:
+          $ref: "#/components/schemas/timestamptz"
+        track:
+          type: array
+          items:
+            type: object
+            required:
+              - height
+              - longitude
+              - latitude
+              - time
+            properties:
+              height:
+                type: number
+              longitude:
+                type: number
+              latitude:
+                type: number
+              time:
+                $ref: "#/components/schemas/timestamptz"
+
+    flight_media:
+      type: array
+      items:
+        $ref: "#/components/schemas/media"
+
+    flight_users:
+      type: array
+      items:
+        $ref: "#/components/schemas/flight_user"
+
+    flight_users_post:
+      type: object
+      required:
+        - user_id
+        - type
+      properties:
+        user_id:
+          $ref: "#/components/schemas/id"
+        type:
+          type: integer
+          description: 0 = pilot, 1 = sensor operator, 2 = leader, 3 = air space monitoring
+
+    flight_user:
+      type: object
+      required:
+        - flight_id
+        - user_id
+        - created_by
+        - type
+      properties:
+        flight_id:
+          $ref: "#/components/schemas/id"
+        user_id:
+          $ref: "#/components/schemas/id"
+        created_by:
+          $ref: "#/components/schemas/id"
+        type:
+          type: integer
+          description: 0 = pilot, 1 = sensor operator, 2 = leader, 3 = air space monitoring
+
+
+    mission_state:
+      type: integer
+      description: 0 = pending, 1 = accepted, 2 = in progress, 3 = done, 4 = rejected, 5 = failed, 6 = canceled
+
+    task_state:
+      type: integer
+      description: 0 = pending, 1 = accepted, 2 = in progress, 3 = done, 4 = rejected, 5 = failed, 6 = canceled
+
+    mission:
+      type: object
+      required:
+        - id
+        - workspace_id
+        - name
+        - created_by
+        - updated_by
+        - created_at
+        - updated_at
+        - state
+      properties:
+        id:
+          $ref: "#/components/schemas/id"
+        workspace_id:
+          $ref: "#/components/schemas/id"
+        name:
+          type: string
+        description:
+          type: string
+        notes:
+          type: string
+        created_by:
+          $ref: "#/components/schemas/id"
+        updated_by:
+          $ref: "#/components/schemas/id"
+        created_at:
+          $ref: "#/components/schemas/timestamptz"
+        updated_at:
+          $ref: "#/components/schemas/timestamptz"
+        assigned_to_team_id:
+          $ref: "#/components/schemas/id_nullable"
+        state:
+          $ref: "#/components/schemas/mission_state"
+
+    mission_post:
+      type: object
+      required:
+        - workspace_id
+        - name
+      properties:
+        workspace_id:
+          $ref: "#/components/schemas/id"
+        name:
+          type: string
+        description:
+          type: string
+        notes:
+          type: string
+        assigned_to_team_id:
+          $ref: "#/components/schemas/id"
+        state:
+          $ref: "#/components/schemas/mission_state"
+
+    mission_patch:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        assigned_to_team_id:
+          $ref: "#/components/schemas/id_nullable"
+        state:
+          $ref: "#/components/schemas/mission_state"
+
+    mission_tasks:
+      type: array
+      items:
+          $ref: "#/components/schemas/task"
+
+    task:
+      type: object
+      required:
+        - id
+        - mission_id
+        - name
+        - created_by
+        - updated_by
+        - created_at
+        - updated_at
+        - state
+        - geo_objects
+      properties:
+        id:
+          $ref: "#/components/schemas/id"
+        mission_id:
+          $ref: "#/components/schemas/id"
+        name:
+          type: string
+        description:
+          type: string
+        notes:
+          type: string
+        created_by:
+          $ref: "#/components/schemas/id"
+        updated_by:
+          $ref: "#/components/schemas/id"
+        created_at:
+          $ref: "#/components/schemas/timestamptz"
+        updated_at:
+          $ref: "#/components/schemas/timestamptz"
+        state:
+          $ref: "#/components/schemas/task_state"
+        geo_objects:
+          type: array
+          items:
+            $ref: "#/components/schemas/geo_object"
+
+
+    task_post:
+      type: object
+      required:
+        - mission_id
+        - name
+      properties:
+        mission_id:
+          $ref: "#/components/schemas/id"
+        name:
+          type: string
+        description:
+          type: string
+        notes:
+          type: string
+        state:
+          $ref: "#/components/schemas/task_state"
+
+    task_patch:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        state:
+          $ref: "#/components/schemas/task_state"
+
+    task_link_geo_object:
+      type: object
+      required:
+        - geo_object_id
+      properties:
+        geo_object_id:
+          $ref: "#/components/schemas/id"
+
+    task_unlink_geo_object:
+      type: object
+      required:
+        - geo_object_id
+      properties:
+        geo_object_id:
+          $ref: "#/components/schemas/id"
+
+
+
+
+    media:
+      type: object
+      required:
+        - id
+        - type
+        - file_id
+        - received_at
+        - drone_id
+        - flight_id
+        - file_name
+      properties:
+        id:
+          $ref: "#/components/schemas/id"
+        drone_id:
+          $ref: "#/components/schemas/id"
+        flight_id:
+          $ref: "#/components/schemas/id"
+        type:
+          type: number
+          description: 0 = image, 1 = video
+        file_id:
+          type: number
+          example: 42
+          description: see `/file` endpoint
+        file_name:
+          type: string
+        received_at:
+          $ref: "#/components/schemas/timestamptz"
+        meta:
+          type: string
+        captured_at:
+          $ref: "#/components/schemas/timestamptz"
+        camera_location:
+          type: object
+          properties:
+            position:
+              type: object
+              required:
+                - longitude
+                - latitude
+              properties:
+                longitude:
+                  type: number
+                latitude:
+                  type: number
+            height:
+              type: number
+        camera_angles:
+          type: object
+          properties:
+            heading:
+              type: number
+            pitch:
+              type: number
+            roll:
+              type: number
+
+    media_ground_coverage:
+      type: object
+      required:
+        - coverage
+      properties:
+        coverage:
+          type: object
+          required:
+            - all
+            - outer
+            - holes
+          properties:
+            all:
+              type: array
+              items:
+                $ref: "#/components/schemas/ground-coverage-location"
+            outer:
+              type: array
+              items:
+                $ref: "#/components/schemas/ground-coverage-location"
+            holes:
+              type: array
+              items:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ground-coverage-location"
+
+    ground-coverage-location:
+      type: object
+      required:
+        - position
+        - elevation
+      properties:
+        position:
+          type: object
+          required:
+            - longitude
+            - latitude
+          properties:
+            longitude:
+              type: number
+              description: in degree
+            latitude:
+              type: number
+              description: in degree
+        elevation:
+          type: number
+          description: in meters
+        debug:
+          type: string
+          description: for debugging only
+        ray:
+          type: object
+          required:
+            - bearing
+            - pitch
+            - imagePosition
+          properties:
+            bearing:
+              type: number
+            pitch:
+              type: number
+            imagePosition:
+              type: object
+              required:
+                - x
+                - y
+              properties:
+                x:
+                  type: number
+                y:
+                  type: number
+        directDistance:
+          type: number
+        meterSize:
+          type: object
+          required:
+            - vertical
+            - horizontal
+          properties:
+            vertical:
+              type: number
+            horizontal:
+              type: number
+
+    # connection-link
+
+    connection_link_auth_login_post:
+      type: object
+      required:
+        - connection_id
+        - secret
+      properties:
+        connection_id:
+          type: string
+        secret:
+          type: string
+
+    connection_link_config:
+      type: object
+      required:
+        - connection_id
+        - workspace_id
+        - workspace_uuid
+        - workspace_name
+        - platform_name
+        - platform_url
+        - secret
+      properties:
+        connection_id:
+          type: string
+        platform_name:
+          type: string
+        platform_url:
+          type: string
+        workspace_id:
+          type: string
+        workspace_uuid:
+          $ref: "#/components/schemas/uuid"
+        workspace_name:
+          type: string
+        secret:
+          type: string
+
+    connection_link_dji_pilot_2_sdk_config:
+      type: object
+      required:
+        - app_id
+        - app_key
+        - app_license
+        - mqtt_url
+        - rtmp_url
+        - api_url
+        - ws_url
+      properties:
+        app_id:
+          type: string
+        app_key:
+          type: string
+        app_license:
+          type: string
+        mqtt_url:
+          type: string
+        rtmp_url:
+          type: string
+        api_url:
+          type: string
+        ws_url:
+          type: string
+
+    # dji pilot 2 api
+
+    dji_pilot_2_api_media_fast_upload_post:
+      type: object
+      required:
+        - fingerprint
+      properties:
+        ext:
+          type: object
+          required:
+            - drone_model_key
+            - is_original
+            - payload_model_key
+            - tinny_fingerprint
+            - sn
+          properties:
+            drone_model_key:
+              type: string
+            is_original:
+              type: boolean
+            payload_model_key:
+              type: string
+            tinny_fingerprint:
+              type: string
+            sn:
+              type: string
+        fingerprint:
+          type: string
+        name:
+          type: string
+        path:
+          type: string
+
+    dji_pilot_2_api_media_fast_upload_post_response:
+      type: object
+      required:
+        - code
+        - message
+        - data
+      properties:
+        code:
+          type: number
+          description: 0 = success
+        message:
+          type: string
+          example: "success"
+        data:
+          type: object
+
+    dji_pilot_2_api_media_files_tiny_fingerprints_post:
+      type: object
+      description: TODO what is the format? documentation does not say
+
+    dji_pilot_2_api_media_files_tiny_fingerprints_post_response:
+      type: object
+      required:
+        - code
+        - message
+        - data
+      properties:
+        code:
+          type: number
+          description: 0 = success
+        message:
+          type: string
+          example: "success"
+        data:
+          type: object
+          required:
+            - tiny_fingerprints
+          properties:
+            tiny_fingerprints:
+              type: array
+              items:
+                type: string
+                example: 5aec4c6e78052bf38fab901bcd1a2319_2021_12_8_22_13_10
+
+    dji_pilot_2_api_media_sts_post_response:
+      type: object
+      required:
+        - code
+        - message
+        - data
+      properties:
+        code:
+          type: number
+          description: 0 = success
+        message:
+          type: string
+          example: "success"
+        data:
+          type: object
+          required:
+            - bucket
+            - credentials
+            - endpoint
+            - object_key_prefix
+            - provider
+            - region
+          properties:
+            bucket:
+              type: string
+            credentials:
+              type: object
+              required:
+                - access_key_id
+                - access_key_secret
+              properties:
+                access_key_id:
+                  type: string
+                access_key_secret:
+                  type: string
+                expire:
+                  type: number
+                security_token:
+                  type: string
+            endpoint:
+              type: string
+            object_key_prefix:
+              type: string
+            provider:
+              type: string
+              description: can be `ali`, `aws` or `minio`
+            region:
+              type: string
+
+    dji_pilot_2_api_media_upload_callback_post:
+      type: object
+      required:
+        - name
+        - object_key
+      properties:
+        result:
+          type: integer
+          description: non-zero means failure
+        name:
+          type: string
+        object_key:
+          type: string
+        path:
+          type: string
+        sub_file_type:
+          type: number
+        ext:
+          type: object
+          properties:
+            file_group_id:
+              type: string
+            drone_model_key:
+              type: string
+              description: device product enum
+            is_original:
+              type: boolean
+            payload_model_key:
+              type: string
+              description: payload product enum
+            tinny_fingerprint:
+              type: string
+              description: TODO check if tinny is spelled correctly
+            sn:
+              type: string
+        fingerprint:
+          type: string
+        metadata:
+          type: object
+          properties:
+            absolute_altitude:
+              type: number
+            created_time:
+              type: string
+            gimbal_yaw_degree:
+              type: number
+            relative_altitude:
+              type: number
+            shoot_position:
+              type: object
+              properties:
+                lat:
+                  type: number
+                lng:
+                  type: number
+
+    dji_pilot_2_api_media_upload_callback_post_response:
+      type: object
+      required:
+        - code
+        - message
+        - data
+      properties:
+        code:
+          type: number
+          description: 0 = success
+        message:
+          type: string
+          example: "success"
+        data:
+          type: object
+          required:
+            - object_key
+          properties:
+            object_key:
+              type: string
+
+    dji_pilot_2_api_media_group_upload_callback_post:
+      type: object
+      required:
+        - file_count
+        - file_uploaded_count
+      properties:
+        file_group_id:
+          type: string
+        file_count:
+          type: integer
+        file_uploaded_count:
+          type: integer
+
+    dji_pilot_2_api_media_group_upload_callback_post_response:
+      type: object
+      required:
+        - code
+        - message
+        - data
+      properties:
+        code:
+          type: number
+          description: 0 = success
+        message:
+          type: string
+          example: "success"
+        data:
+          type: object
+          description: TODO missing documentation
+
+    dji_pilot_2_api_map_element_groups_elements_post:
+      type: object
+      required:
+        - id
+        - name
+        - resource
+      properties:
+        id:
+          $ref: "#/components/schemas/uuid"
+        name:
+          type: string
+        resource:
+          type: object
+          description: TODO missing documentation
+          required:
+            - type
+            - content
+          properties:
+            type:
+              type: number
+              description: 0 = point, 1 = line, 2 = polygon, 7 = circle
+            content:
+              type: object
+              required:
+                - type
+                - geometry
+              properties:
+                type:
+                  type: string
+                geometry:
+                  type: object
+                properties:
+                  type: object
+
+    dji_pilot_2_api_map_element_groups_elements_post_response:
+      type: object
+      required:
+        - code
+        - data
+        - message
+      properties:
+        code:
+          type: number
+          example: 0
+        message:
+          type: string
+          example: "success"
+        data:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              $ref: "#/components/schemas/uuid"
+
+    dji_pilot_2_api_map_element_groups_get_response:
+      type: object
+      required:
+        - code
+        - data
+        - message
+      properties:
+        code:
+          type: number
+          example: 0
+        message:
+          type: string
+          example: "success"
+        data:
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - create_time
+              - elements
+              - is_lock
+              - name
+              - type
+            properties:
+              id:
+                $ref: "#/components/schemas/uuid"
+              name:
+                type: string
+              create_time:
+                $ref: "#/components/schemas/unixms"
+              is_lock:
+                type: boolean
+                description: if locked, elements of this group can not be deleted/modified
+              type:
+                type: number
+                description: 0 = custom element group, 1 = default element group, 2 = app shared element group (the only visible group on dji pilot 2 app)
+              elements:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - id
+                    - name
+                    - create_time
+                    - update_time
+                    - resource
+                  properties:
+                    id:
+                      $ref: "#/components/schemas/uuid"
+                    name:
+                      type: string
+                    create_time:
+                      $ref: "#/components/schemas/unixms"
+                    update_time:
+                      $ref: "#/components/schemas/unixms"
+                    resource:
+                      type: object
+                      required:
+                        - type
+                        - content
+                      properties:
+                        type:
+                          type: number
+                          description: 0 = point, 1 = line, 2 = polygon, 7 = circle
+                        content:
+                          type: object
+                          required:
+                            - type
+                            - properties
+                            - geometry
+                          properties:
+                            type:
+                              type: string
+                              description: geojson format
+                            properties:
+                              type: object
+                              required:
+                                - clampToGround
+                                - color
+                              properties:
+                                clampToGround:
+                                  type: boolean
+                                is3d:
+                                  type: boolean
+                                color:
+                                  type: string
+                                  description: "only valid colors. BLUE: #2D8CF0, GREEN: #19BE6B, YELLOW: #FFBB00, RED: #E23C39, PURPLE: #B620E0"
+                                  example: BLUE
+                            geometry:
+                              type: object
+                              required:
+                                - type
+                                - coordinates
+                              properties:
+                                type:
+                                  type: string
+                                  description: geojson format
+                                coordinates:
+                                  type: array
+                                  items:
+                                    anyOf:
+                                      - type: number
+                                      - type: array
+                                        items:
+                                          type: number
+                                  description: geojson format
+                                radius:
+                                  type: number
+
+    dji_pilot_2_api_map_elements_put:
+      type: object
+      required:
+        - name
+        - content
+      properties:
+        name:
+          type: string
+        content:
+          type: object
+          required:
+            - type
+            - geometry
+            - properties
+          properties:
+            type:
+              type: string
+            geometry:
+              type: object
+            properties:
+              type: object
+
+    dji_pilot_2_api_map_elements_put_response:
+      type: object
+      required:
+        - code
+        - data
+        - message
+      properties:
+        code:
+          type: number
+          example: 0
+        message:
+          type: string
+          example: "success"
+        data:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              $ref: "#/components/schemas/uuid"
+
+    dji_pilot_2_api_map_elements_delete_response:
+      type: object
+      required:
+        - code
+        - data
+        - message
+      properties:
+        code:
+          type: number
+          example: 0
+        message:
+          type: string
+          example: "success"
+        data:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              $ref: "#/components/schemas/uuid"
+
+    dji_pilot_2_api_manage_devices_topology_response:
+      type: object
+      required:
+        - code
+        - data
+        - message
+      properties:
+        code:
+          type: number
+          example: 0
+        message:
+          type: string
+          example: "success"
+        data:
+          type: object
+          required:
+            - list
+          properties:
+            list:
+              type: array
+              items:
+                type: object
+                required:
+                  - hosts
+                  - parents
+                properties:
+                  hosts:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/dji_pilot_2_api_manage_devices_topology_device"
+                  parents:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/dji_pilot_2_api_manage_devices_topology_device"
+
+    dji_pilot_2_api_manage_devices_topology_device:
+      type: object
+      required:
+        - device_callsign
+        - online_status
+        - sn
+        - user_callsign
+        - user_id
+      properties:
+        device_callsign:
+          type: string
+        device_model:
+          type: object
+          required:
+            - key
+            - domain
+            - type
+            - sub_type
+          properties:
+            key:
+              type: string
+            domain:
+              type: string
+            type:
+              type: string
+            sub_type:
+              type: string
+        icon_urls:
+          type: object
+          description: custom icon
+          required:
+            - normal_icon_url
+            - selected_icon_url
+          properties:
+            normal_icon_url:
+              type: string
+            selected_icon_url:
+              type: string
+        online_status:
+          type: boolean
+        sn:
+          type: string
+        user_callsign:
+          type: string
+        user_id:
+          type: string
+
+    # info
+
+    info_collision_objects:
+      type: array
+      items:
+        type: object
+        required:
+          - type
+          - id
+          - name
+          - marking
+        properties:
+          type:
+            type: integer
+            description: 0 = power tower, 1 = power pole, 2 = power line large, 3 = power line small or catenary, 4 = aerialway pylon, 5 = aerialway (like chair lift or gondola), 6 = building (e.g. tower)
+          id:
+            type: number
+            description: unique identifier for collision objects
+          name:
+            type: string
+          marking:
+            $ref: "#/components/schemas/info_collision_objects_marking"
+
+    info_collision_objects_marking:
+      anyOf:
+        - $ref: "#/components/schemas/info_collision_objects_marking_0"
+        - $ref: "#/components/schemas/info_collision_objects_marking_1"
+        - $ref: "#/components/schemas/info_collision_objects_marking_2"
+
+    info_collision_objects_marking_base:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: number
+          description: 0 = point, 1 = line, 2 = area
+
+    info_collision_objects_marking_0:
+      allOf:
+        - $ref: "#/components/schemas/info_collision_objects_marking_base"
+        - type: object
+          required:
+            - type
+            - longitude
+            - latitude
+            - height_above_ground
+          properties:
+            type:
+              type: integer
+              x-const: 0
+            longitude:
+              type: number
+            latitude:
+              type: number
+            height_above_ground:
+              type: number
+              description: this is often an estimated value based on the type (e.g. power line large is about 80m)
+
+    info_collision_objects_marking_1:
+      allOf:
+        - $ref: "#/components/schemas/info_collision_objects_marking_base"
+        - type: object
+          required:
+            - type
+            - points
+          properties:
+            type:
+              type: integer
+              x-const: 1
+            points:
+              type: array
+              items:
+                type: object
+                required:
+                  - longitude
+                  - latitude
+                  - height_above_ground
+                properties:
+                  longitude:
+                    type: number
+                  latitude:
+                    type: number
+                  height_above_ground:
+                    type: number
+                    description: this is often an estimated value based on the type (e.g. power line large is about 80m)
+
+    info_collision_objects_marking_2:
+      allOf:
+        - $ref: "#/components/schemas/info_collision_objects_marking_base"
+        - type: object
+          required:
+            - type
+            - points
+          properties:
+            type:
+              type: integer
+              x-const: 2
+            points:
+              type: array
+              items:
+                type: object
+                required:
+                  - longitude
+                  - latitude
+                  - height_above_ground
+                properties:
+                  longitude:
+                    type: number
+                  latitude:
+                    type: number
+                  height_above_ground:
+                    type: number
+                    description: this is often an estimated value based on the type (e.g. power line large is about 80m)
+
+
+
+  responses:
+    "400":
+      description: Bad Request (Invalid input)
+      content:
+        text:
+          schema:
+            type: string
+            example: ".x"
+            description: the property `x` is invalid
+
+    "401":
+      description: Unauthorized (this endpoint requires authorization)
+      content:
+        text:
+          schema:
+            type: string
+
+    "403":
+      description: Forbidden (you do not have permission to do this)
+      content:
+        text:
+          schema:
+            type: string
+
+    "410":
+      description: Gone (we understood your request but whatever you where looking for does not exist)
+      content:
+        text:
+          schema:
+            type: string
+
+  headers:
+    user_auth:
+      description: used for authentication of a user
+      schema:
+        type: string
+        example: user-auth=abcde12345; Path=/; HttpOnly
+    connection_link_auth:
+      description: used for authentication of a connection link
+      schema:
+        type: string
+        example: connect-auth=abcde12345; Path=/; HttpOnly
+
+  securitySchemes:
+    user_auth:
+      type: apiKey
+      in: cookie
+      name: user-auth
+    connection_link_auth:
+      type: apiKey
+      in: cookie
+      name: connection-link-auth
+    dji_pilot_2_api:
+      type: apiKey
+      in: header
+      name: x-auth-token

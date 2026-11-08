@@ -1,0 +1,8 @@
+
+###HEADER###
+###CONTENT###
+
+###BUTTON_TEXT###
+###BUTTON_URL###
+
+###FOOTER###

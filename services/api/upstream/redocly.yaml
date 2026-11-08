@@ -1,0 +1,20 @@
+# see https://redocly.com/docs/api-reference-docs/configuration/theming/
+
+apis:
+  internal@latest:
+    root: ./openapi_spec.yaml
+  public@latest:
+    root: ./openapi_spec.yaml
+    decorators:
+      remove-x-internal: on
+
+theme:
+  openapi:
+    theme:
+      sidebar:
+        backgroundColor: "#07112D"
+        textColor: "#F5F6FF"
+      rightPanel:
+        backgroundColor: '#040A1B'
+        textColor: "#F5F6FF"
+
