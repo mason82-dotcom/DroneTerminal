@@ -1,5 +1,6 @@
 name: Verify DroneTerminal database lab
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
