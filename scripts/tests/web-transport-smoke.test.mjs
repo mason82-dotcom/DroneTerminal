@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import { createHash } from 'node:crypto'
 import { resolveDroneTerminalEndpoints, postDroneTerminalMultipart } from '../../apps/web-app/src/api/transport-compat.ts'
+import { makeWorkspaceFileUpload } from '../../apps/web-app/src/api/workspace-upload.ts'
 
 function location(protocol, hostname, host) {
   return { protocol, hostname, host }
@@ -156,4 +157,23 @@ test('HTTP errors reject without exposing response payload or cookies', async ()
     postDroneTerminalMultipart('http://127.0.0.1:6001', '/upload', { field: 'x' }, { fetchImpl }),
     /^Error: Multipart request failed: HTTP 415$/,
   )
+})
+
+test('Workspace upload routes exactly to generated multipart endpoint and keeps the file', async () => {
+  let observed
+  const fetchImpl = async (endpoint, options) => {
+    observed = { endpoint, options }
+    return new Response(JSON.stringify({ id: 11, file: 'fixture' }), { status: 200 })
+  }
+  const upload = makeWorkspaceFileUpload('http://127.0.0.1:6001', { fetchImpl })
+  const fixture = new File(['read-only fixture'], 'test.txt', { type: 'text/plain' })
+  const result = await upload({ params: { workspaceId: 11 }, data: { file: fixture, filename: 'test.txt' } })
+  assert.deepEqual(result, { id: 11, file: 'fixture' })
+  assert.equal(observed.endpoint, 'http://127.0.0.1:6001/workspace/11/file')
+  assert.equal(observed.options.body.get('filename'), 'test.txt')
+  assert.equal(observed.options.body.get('file').name, 'test.txt')
+  assert.equal(observed.options.headers['Content-Type'], undefined)
+  assert.equal(observed.options.credentials, 'include')
+  await assert.rejects(upload({ params: { workspaceId: -1 }, data: { file: fixture, filename: 'x' } }), /positive safe integer/)
+  await assert.rejects(upload({ params: { workspaceId: 11 }, data: { file: 'not a file', filename: 'x' } }), /requires a file/)
 })
