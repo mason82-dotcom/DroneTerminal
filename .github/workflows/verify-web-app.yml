@@ -1,0 +1,36 @@
+name: Verify DroneTerminal web app
+on:
+  push:
+    branches:
+      - main
+      - feat/import-openflighthub-web-app-20261108
+    paths:
+      - 'apps/web-app/**'
+      - '.github/workflows/verify-web-app.yml'
+  pull_request:
+    paths:
+      - 'apps/web-app/**'
+      - '.github/workflows/verify-web-app.yml'
+permissions:
+  contents: read
+jobs:
+  frontend:
+    name: Vue typecheck and Vite build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/web-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/web-app/package-lock.json
+      - name: Install locked dependencies without executing install scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Check Vue and TypeScript
+        run: npm run type-check
+      - name: Build Vite application
+        run: npm run build-only
