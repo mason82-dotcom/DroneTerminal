@@ -45,3 +45,19 @@ Der neue, isolierte Generator-Check `scripts/check-generated-contracts.cjs` füh
 ## SDK-8.3.0-Vertragsprüfung (REST + WebSocket)
 
 Die eigene, nur lesende CI-Prüfung `scripts/check-sdk-contracts.cjs` gleicht den importierten SDK-Quellstand mit der OpenAPI und den WebSocket-Typdefinitionen des API-Backends ab. **94/94 REST-Operationen stimmen überein**, 12 interne Endpunkte bleiben wie vorgesehen aus dem Client ausgeschlossen, beide WebSocket-Typdateien sind byteidentisch und die Paket-/Lockfile-Versionen passen. Der Check wird durch vier Regressionstests abgesichert. Zwei offene Laufzeitprobleme (lokaler WS-Port und Multipart-Header) sowie die Browser-/E2E-Grenzen sind unter [SDK-Vertragsaudit](docs/sdk-contract-audit.md) dokumentiert. Es wurde kein Server gestartet.
+
+## Web-App-Transportintegration (isoliertes Labor)
+
+Das Frontend ist gegenüber dem ursprünglichen ZIP-Snapshot gezielt
+angepasst: Es konfiguriert lokale REST-/WebSocket-Endpunkte gemeinsam
+auf `:6001` und nutzt für die einzige generierte Multipart-Methode
+`workspace.file.post` einen separaten Browsertransport, der den
+`multipart/form-data`-Boundary korrekt setzt. Der importierte
+OpenFlightHub-SDK-Quellbestand bleibt unverändert. Ein eigener CI-Test
+verifiziert echte Requests und einen WebSocket-Handshake ausschließlich
+auf einem ephemeren Mock-Server an `127.0.0.1`.
+
+[Technik, Testergebnisse und Grenzen](docs/web-transport-smoke.md).
+Es existiert noch kein nachgewiesener vollständiger Live-/Hardwarebetrieb,
+kein sicher gehärteter API-/MQTT-/RBAC-Stack und keine Freigabe zum
+produktiven Einsatz.
