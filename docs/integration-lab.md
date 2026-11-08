@@ -100,3 +100,21 @@ im echten API-Code korrigieren. Danach einen kontrolliert startbaren
 Original-Backend-Testmodus ohne FakeDrone, MQTT und Medienjobs
 einführen und das reale Vue-Frontend in einem privaten Browser-E2E
 gegen einen sicheren Adapter testen. Keine Abnahme ohne Belege.
+
+## Erster erfolgreicher CI-Nachweis
+
+[GitHub Actions #42531544810](https://github.com/mason82-dotcom/DroneTerminal/actions/runs/42531544810)
+hat den kompletten isolierten Docker-Stack gestartet und wieder
+entfernt: **3/3 Testgruppen PASS**. Nachgewiesen wurden
+PostgreSQL-`default_transaction_read_only=on`, blockiertes SQL-`UPDATE`,
+eine Datenbankabfrage im HTTP-Healthcheck, 401 ohne Sitzung,
+synthetischer Login, `HttpOnly`-/`SameSite=Strict`-Cookie,
+User- und Workspace-SELECT, die versteckte zweite
+Workspace-Zuordnung, 401 beim WebSocket-Handshake **vor** Upgrade,
+erlaubte/verbotene WS-Abonnements und Session-Invalidierung nach
+Logout.
+
+Der Workflow hat zusätzlich `persist-credentials: false` für
+`actions/checkout` gesetzt, um keinen GitHub-Token im von
+den Docker-Containern gemounteten Repository zu hinterlassen.
+Die realen OpenFlightHub-Backends wurden nicht ausgeführt.
