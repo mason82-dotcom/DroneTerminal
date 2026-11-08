@@ -5,7 +5,7 @@ const { parseOpenApi, parseSdkRest, compareRest, audit } = require('../check-sdk
 function fixtures() {
   const spec = ['openapi: 3.0.3', 'info:', '  version: 0.22.0', 'paths:'];
   const sdk = ["API_VERSION: '0.22.0',"];
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < 52; i++) {
     const route = i === 0 ? '/upload/{file_id}' : '/example/' + i;
     const endpoint = i === 0 ? '/upload/{fileId}' : route;
     const method = i % 2 ? 'get' : 'post';
@@ -23,8 +23,8 @@ test('REST parser honors method-level x-no-sdk, path parameter naming and multip
   const { spec, sdk } = fixtures();
   const a = parseOpenApi(spec), b = parseSdkRest(sdk);
   const result = compareRest(a, b);
-  assert.equal(result.expected, 49);
-  assert.equal(result.actual, 49);
+  assert.equal(result.expected, 51);
+  assert.equal(result.actual, 51);
   assert.equal(result.excluded, 1);
   assert.deepEqual(result.errors, []);
 });
