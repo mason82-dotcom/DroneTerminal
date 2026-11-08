@@ -14,7 +14,7 @@ Stand: 08.11.2026 · DroneTerminal-Featurebranch
 
 ## CI-Ergebnis
 
-[GitHub Actions #42523758891](https://github.com/mason82-dotcom/DroneTerminal/actions/runs/42523758891):
+[GitHub Actions #42523758891](https://github.com/mason82-dotcom/DroneTerminal/actions/runs/42525139236):
 
 | Prüfpunkt | Ergebnis |
 |---|---|
@@ -25,7 +25,7 @@ Stand: 08.11.2026 · DroneTerminal-Featurebranch
 | Paketversion SDK und Web-App-Lockfile | 8.3.0 |
 | WebSocket-Typen `client_to_server.ts` | Byteidentisch |
 | WebSocket-Typen `server_to_client.ts` | Byteidentisch |
-| Positive/negative Prüffälle für fehlende, zusätzliche und abweichende Operationen | 4/4 PASS |
+| Positive/negative Prüffälle für fehlende, zusätzliche und abweichende Operationen | 7/7 PASS |
 | Unbeabsichtigte Änderungen an Quell-Snapshots | Keine |
 
 Der Audit prüft ausschließlich statische Verträge. Es werden weder API-Server
@@ -102,3 +102,15 @@ Dabei müssen die oben genannten Laufzeitprobleme behoben bzw.
 durch einen separaten Adapter kontrolliert werden. Erst danach
 Backend-/PostGIS-/MinIO-End-to-End und anschließend ein
 hardwarefreier DJI-MQTT-Replay-Test.
+
+## Zusätzliche CI-Härtung (08.11.2026)
+
+Drei negative Regressionstests ergänzen den vorhandenen REST- und WebSocket-
+Vertragsaudit: doppelte SDK-Operationen, doppelte OpenAPI-Operationen und
+eine unerwartet leere/verkürzte SDK-Generierung führen nun explizit zum
+Fehlerstatus. Der erweiterte bestehende Checker wurde unter
+`scripts/check-sdk-contracts.cjs` beibehalten; ein zwischenzeitlich
+hinzugefügter paralleler Checker wurde zur Vermeidung doppelter Pflege
+wieder entfernt. Der bestehende GitHub-Workflow ist weiterhin die
+kanonische CI-Prüfung. Alle sieben Regressionstests bestanden im
+[Actions-Lauf #42525139236](https://github.com/mason82-dotcom/DroneTerminal/actions/runs/42525139236).
