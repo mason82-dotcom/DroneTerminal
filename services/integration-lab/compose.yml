@@ -74,6 +74,11 @@ services:
         condition: service_healthy
     environment:
       DRONETERMINAL_LAB_ONLY: "1"
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: droneterminal
+      PGUSER: dt_lab_reader
+      PGPASSWORD: ${DRONETERMINAL_LAB_DB_READ_PASSWORD:?}
       DRONETERMINAL_LAB_LOGIN_PASSWORD: ${DRONETERMINAL_LAB_LOGIN_PASSWORD:?}
     working_dir: /workspace
     command: ["node", "--test", "services/integration-lab/smoke.test.cjs"]
