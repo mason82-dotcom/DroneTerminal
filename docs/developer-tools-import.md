@@ -70,3 +70,13 @@ P0: Quellenrechte klären und echte Logs/Serials vor Speicherung redigieren.
 P1: Generatoren auf temporäre Input-/Output-Verzeichnisse begrenzen und
 erzeugte Typen gegen den aktuellen API/DB-Quellstand vergleichen.
 P2: SDK-8.3.0-Vertragsabgleich und Hardware-freie MQTT-Replay-Tests.
+
+## CI-Besonderheit: definition-generator
+
+Beim ersten strengen TypeScript-Lauf wurde ausschließlich ein Fehler in der
+Drittanbieter-Typdeklaration von `@dbml/parse` festgestellt: das optionale
+`monaco-editor-core` ist nicht installiert (TS2307). Die CI führt daher
+**nur für diesen Generator** einen `tsc --noEmit --skipLibCheck`-Lauf aus,
+um die projektspezifischen TypeScript-Dateien zu prüfen, ohne fremde
+Typdeklarationen zu validieren. Die zwei anderen Werkzeuge werden weiterhin
+ohne `skipLibCheck` geprüft. Dies ist kein produktiver Laufzeitnachweis.
