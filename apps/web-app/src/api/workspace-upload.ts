@@ -17,7 +17,7 @@ export function makeWorkspaceFileUpload(
 ) {
   return async function uploadWorkspaceFile(config: WorkspaceFileConfig): Promise<unknown> {
     const id = config?.params?.workspaceId
-    if (!Number.isSafeInteger(id) || id <= 0) {
+    if (typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0) {
       throw new Error('Workspace id must be a positive safe integer')
     }
     if (!config?.data || !(config.data.file instanceof Blob) || typeof config.data.filename !== 'string') {
