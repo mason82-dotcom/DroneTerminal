@@ -8,12 +8,12 @@ on:
       - 'apps/web-app/src/api/**'
       - 'scripts/tests/web-transport-smoke.test.mjs'
       - 'scripts/tests/register-ts-resolution.mjs'
-      - 'scripts/tests/register-ts-resolution.mjs'
       - '.github/workflows/verify-web-transport.yml'
   pull_request:
     paths:
       - 'apps/web-app/src/api/**'
       - 'scripts/tests/web-transport-smoke.test.mjs'
+      - 'scripts/tests/register-ts-resolution.mjs'
       - '.github/workflows/verify-web-transport.yml'
   workflow_dispatch:
 permissions:
