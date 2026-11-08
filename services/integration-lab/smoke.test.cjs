@@ -45,7 +45,8 @@ test('PostGIS lab API health is DB-backed and read-only', { timeout: 15000 }, as
   assert.equal(health.status, 200);
   assert.deepEqual(await health.json(), { status: 'ok', lab: true });
 
-  const db = pgp({})({
+  const initDb = pgp({});
+  const db = initDb({
     host: 'db', user: 'dt_lab_reader', password: process.env.PGPASSWORD,
     database: 'droneterminal', port: 5432, max: 1,
   });
@@ -61,7 +62,7 @@ test('PostGIS lab API health is DB-backed and read-only', { timeout: 15000 }, as
     const unchanged = await db.one('SELECT name FROM public.workspaces WHERE id = $1', [7401]);
     assert.equal(unchanged.name, 'Visible Synthetic Workspace');
   } finally {
-    pgp.end();
+    initDb.end();
   }
 });
 
