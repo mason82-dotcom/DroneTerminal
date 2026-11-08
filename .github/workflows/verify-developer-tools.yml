@@ -1,0 +1,81 @@
+name: Verify OpenFlightHub developer tools
+on:
+  push:
+    branches:
+      - main
+      - feat/import-openflighthub-web-app-20261108
+    paths:
+      - 'tools/openflighthub/**'
+      - 'vendor/openflighthub/api-client-sdk-typescript/**'
+      - 'scripts/verify-vendor.mjs'
+      - '.github/workflows/verify-developer-tools.yml'
+  pull_request:
+    paths:
+      - 'tools/openflighthub/**'
+      - 'vendor/openflighthub/api-client-sdk-typescript/**'
+      - 'scripts/verify-vendor.mjs'
+      - '.github/workflows/verify-developer-tools.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inventory:
+    name: Immutable ZIP sources and MIT vendor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check three complete source trees and all SDK content
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:tools/openflighthub/dji-docs-converter)" = "ed60b76cf92965082b0ec8de82ee92d7b73867b1"
+          test "$(git rev-parse HEAD:tools/openflighthub/definition-generator)" = "65fc29e0ecd8166e074b67af0bb1b36feee9f58e"
+          test "$(git rev-parse HEAD:tools/openflighthub/mqtt-packet-analyzer)" = "fdec896628f0a2c830d4c47fd7ccf01555ace2dc"
+          test "$(git ls-tree -r --name-only HEAD:vendor/openflighthub/api-client-sdk-typescript | wc -l)" -eq 38
+          test -f vendor/openflighthub/api-client-sdk-typescript/LICENSE
+          test -f vendor/openflighthub/api-client-sdk-typescript/dev/.vscode/tasks.json
+          test -f tools/openflighthub/dji-docs-converter/src/typeGenerator.ts
+          test -f tools/openflighthub/definition-generator/src/database/index.ts
+          test -f tools/openflighthub/mqtt-packet-analyzer/src/Analyzer.ts
+          test ! -f tools/openflighthub/dji-docs-converter/LICENSE
+          test ! -f tools/openflighthub/definition-generator/LICENSE
+          test ! -f tools/openflighthub/mqtt-packet-analyzer/LICENSE
+          node scripts/verify-vendor.mjs
+          echo 'PASS: original source trees and MIT vendor inventory'
+  typecheck:
+    name: Offline typecheck / ${{ matrix.tool }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        tool:
+          - dji-docs-converter
+          - definition-generator
+          - mqtt-packet-analyzer
+    defaults:
+      run:
+        working-directory: tools/openflighthub/${{ matrix.tool }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tools/openflighthub/${{ matrix.tool }}/package-lock.json
+      - name: Install locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Compile-check only (no generator execution, log reads, or network access to DJI)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ matrix.tool }}" = "definition-generator" ]; then
+            # @dbml/parse ships a declaration referring to an absent optional monaco-editor-core.
+            # Skip third-party declarations only; keep project TypeScript checking enabled.
+            ./node_modules/.bin/tsc -p tsconfig.json --noEmit --pretty false --skipLibCheck
+          else
+            ./node_modules/.bin/tsc -p tsconfig.json --noEmit --pretty false
+          fi

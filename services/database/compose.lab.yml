@@ -1,0 +1,29 @@
+# Isolierte Entwicklerdatenbank. Keine Host-Ports, keine Demo-Accounts.
+# WICHTIG: Nur bei einem neuen, leeren benannten Volume initialisieren.
+name: droneterminal-db-lab
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: "no"
+    environment:
+      POSTGRES_USER: droneterminal
+      POSTGRES_DB: droneterminal
+      POSTGRES_PASSWORD: ${DRONETERMINAL_DB_ADMIN_PASSWORD:?Set DRONETERMINAL_DB_ADMIN_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U droneterminal -d droneterminal"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 10s
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      # Die unsicheren Upstream-Rollen/Demo-Daten werden bewusst NICHT ausgeführt.
+      - ./upstream/0_init_database.sql:/docker-entrypoint-initdb.d/00-extensions.sql:ro
+      - ./upstream/1_init_tables.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    networks:
+      - isolated_db
+volumes:
+  db_data:
+networks:
+  isolated_db:
+    internal: true

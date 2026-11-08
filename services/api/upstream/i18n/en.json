@@ -1,0 +1,26 @@
+{
+    "mail": {
+        "register": {
+            "confirm": {
+                "self": {
+                    "header": "Welcome to OpenFlightHub",
+                    "content": "We need to make sure it's you so please confirm your account now.",
+                    "button": "Confirm your email address",
+                    "subject": "Confirm your email address"
+                },
+                "invite": {
+                    "header": "Welcome to OpenFlightHub",
+                    "content": "You have been invited to join the OpenFlightHub platform. Please klick the button bellow to accept the invite.",
+                    "button": "Accept Invite",
+                    "subject": "Accept Invitation to OpenFlightHub"
+                }
+            }
+        },
+        "password_reset": {
+            "subject": "Password Reset Process",
+            "header": "Your password reset code",
+            "content": "Click the link bellow to set your new password",
+            "button": "Set new password"
+        }
+    }
+}

@@ -1,0 +1,94 @@
+# CI-only schema and auth lab. The network has NO egress and NO published host ports.
+# Never use docker compose -f ... up on a machine containing production volumes.
+name: droneterminal-integration-lab
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: "no"
+    environment:
+      POSTGRES_USER: droneterminal
+      POSTGRES_DB: droneterminal
+      POSTGRES_PASSWORD: ${DRONETERMINAL_LAB_DB_ADMIN_PASSWORD:?CI-only random admin password required}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U droneterminal -d droneterminal"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+      start_period: 12s
+    volumes:
+      - lab_db_data:/var/lib/postgresql/data
+      - ../database/upstream/0_init_database.sql:/docker-entrypoint-initdb.d/00-extensions.sql:ro
+      - ../database/upstream/1_init_tables.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    networks: [isolated]
+
+  seed:
+    image: postgis/postgis:16-3.4
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: droneterminal
+      PGDATABASE: droneterminal
+      PGPASSWORD: ${DRONETERMINAL_LAB_DB_ADMIN_PASSWORD:?}
+      DRONETERMINAL_LAB_DB_READ_PASSWORD: ${DRONETERMINAL_LAB_DB_READ_PASSWORD:?}
+    volumes:
+      - ./seed.sql:/lab/seed.sql:ro
+    entrypoint: ["/bin/bash", "-ec"]
+    command:
+      - 'psql -v ON_ERROR_STOP=1 -v reader_password="$DRONETERMINAL_LAB_DB_READ_PASSWORD" -f /lab/seed.sql'
+    networks: [isolated]
+
+  api:
+    image: node:24-bookworm-slim
+    restart: "no"
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    environment:
+      DRONETERMINAL_LAB_ONLY: "1"
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: droneterminal
+      PGUSER: dt_lab_reader
+      PGPASSWORD: ${DRONETERMINAL_LAB_DB_READ_PASSWORD:?}
+      DRONETERMINAL_LAB_LOGIN_PASSWORD: ${DRONETERMINAL_LAB_LOGIN_PASSWORD:?}
+    working_dir: /workspace
+    command: ["node", "services/integration-lab/server.cjs"]
+    volumes:
+      - ../..:/workspace:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:6001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    networks: [isolated]
+
+  checker:
+    image: node:24-bookworm-slim
+    restart: "no"
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      DRONETERMINAL_LAB_ONLY: "1"
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: droneterminal
+      PGUSER: dt_lab_reader
+      PGPASSWORD: ${DRONETERMINAL_LAB_DB_READ_PASSWORD:?}
+      DRONETERMINAL_LAB_LOGIN_PASSWORD: ${DRONETERMINAL_LAB_LOGIN_PASSWORD:?}
+    working_dir: /workspace
+    command: ["node", "--test", "services/integration-lab/smoke.test.cjs"]
+    volumes:
+      - ../..:/workspace:ro
+    networks: [isolated]
+
+volumes:
+  lab_db_data:
+
+networks:
+  isolated:
+    internal: true

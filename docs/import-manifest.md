@@ -24,3 +24,9 @@
 **Tests:** Der Git-Inhaltsvergleich ist erfolgreich. Kein `npm install`, TypeScript-Build, Python-Lauf, Funktionstest oder echte DJI-Hardwareabnahme ausgeführt. Weil zwei große Testfixtures fehlen, können einzelne Upstream-Testläufe ohne deren Wiederbeschaffung fehlschlagen.
 
 **Quellhistorie:** Originaldateien wurden unter fixierten Quell-Commits eingefügt; die vollständige Git-Historie der Original-Repositories wurde nicht übernommen.
+
+## Nachimport des API-Client-SDKs (08.11.2026)
+
+Das Archiv `api-client-sdk-typescript-master.zip` enthält 38 Dateien, der anfängliche kuratierte Vendor-Import 34. Vier ausgelassene `.vscode`-Dateien wurden jetzt byteidentisch ergänzt, ohne bestehende Dateien zu überschreiben. SDK-Version: 8.3.0 (MIT). Die ursprüngliche Liste mit insgesamt 102 Dateien dokumentiert den damaligen Import; nun sind es 106 kuratierte MIT-Vendor-Dateien. Das bereits zuvor als ausführbar markierte `dev/build.sh` behält seinen Modus 100755, weshalb der Gesamt-SDK-Tree vom Originaltree abweicht, obwohl alle 38 Dateiinhalte übereinstimmen.
+
+Die drei zusätzlich übernommenen, nicht lizenzierten Entwicklerwerkzeuge sind **nicht** Bestandteil dieser MIT-Inventarliste. Siehe [developer-tools-import.md](developer-tools-import.md).

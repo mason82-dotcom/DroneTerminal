@@ -1,0 +1,59 @@
+name: Verify DroneTerminal database lab
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - feat/import-openflighthub-web-app-20261108
+    paths:
+      - 'services/database/**'
+      - '.github/workflows/verify-database.yml'
+  pull_request:
+    paths:
+      - 'services/database/**'
+      - '.github/workflows/verify-database.yml'
+permissions:
+  contents: read
+jobs:
+  schema:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact source snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse 'HEAD:services/database/upstream')" = "111486dd0fe0e3f7e127b9d44eba48951a4ad318"
+          test "$(git ls-tree -r --name-only 'HEAD:services/database/upstream' | wc -l)" -eq 17
+          echo "PASS: original 17-file source tree preserved"
+      - name: Generate ephemeral lab credential
+        shell: bash
+        run: echo "DRONETERMINAL_DB_ADMIN_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
+      - name: Bootstrap isolated PostGIS database (schema only)
+        shell: bash
+        run: docker compose -f services/database/compose.lab.yml up -d --wait --wait-timeout 180
+      - name: Confirm PostGIS, 23 tables and no demo/API accounts
+        shell: bash
+        run: |
+          set -euo pipefail
+          compose=(docker compose -f services/database/compose.lab.yml)
+          actual="$("${compose[@]}" exec -T db psql -U droneterminal -d droneterminal -At -v ON_ERROR_STOP=1 -c "
+            SELECT
+              CASE WHEN
+                (SELECT count(*) FROM information_schema.tables
+                  WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+                  AND table_name <> 'spatial_ref_sys') = 23
+                AND to_regclass('public.missions') IS NOT NULL
+                AND to_regclass('public.drone_media') IS NOT NULL
+                AND EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgis')
+                AND NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'api')
+                AND NOT EXISTS (SELECT 1 FROM public.users)
+              THEN 'PASS' ELSE 'FAIL' END;
+          ")"
+          test "$actual" = "PASS"
+          echo "PASS: schema and isolation"
+      - name: Remove ephemeral CI lab and volume
+        if: always()
+        shell: bash
+        run: docker compose -f services/database/compose.lab.yml down --volumes --remove-orphans

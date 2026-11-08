@@ -29,3 +29,7 @@
 **Rechtliche Grenze:** Öffentlich auf GitHub einsehbarer Quellcode ist nicht automatisch unter Open-Source-Bedingungen freigegeben. Eine vollständige Kopie der übrigen elf Projekte in ein anderes Repository setzt die Zustimmung der jeweiligen Rechteinhaber oder eine andere klare Nutzungsberechtigung voraus. Der GitHub-Fork-Mechanismus ist hiervon zu unterscheiden. Für den Import fremden Codes sind dessen Lizenzbedingungen einschließlich Drittanbieterkomponenten einzuhalten.
 
 **Funktionale Grenze:** Derzeit existiert durch diesen Import **keine vollständige OpenFlightHub-Anwendung**, insbesondere kein DJI-Pilot-2-Cloud-Backend, keine Weboberfläche, keine Datenbank und kein Terrain-Service. Bibliotheken unter `vendor/` dürfen nicht mit einer getesteten Hardwareintegration verwechselt werden.
+
+## Aktualisierung zum Entwicklungsbranch (08.11.2026)
+
+Die historische Liste oben beschreibt nur den damaligen Erstimport. Im späteren, weiterhin offenen Entwicklungsbranch wurden auf ausdrücklichen Nutzerwunsch zusätzlich die ZIP-Snapshots für Web-App, API, Datenbank, Terrain sowie drei Entwicklerwerkzeuge (`dji-docs-converter`, `definition-generator`, `mqtt-packet-analyzer`) abgelegt. Die ursprüngliche Kennzeichnung »nur Quellreferenz« ist für diese Projekte deshalb nicht mehr aktuell. Für diese Komponenten fehlt weiterhin eine nachgewiesene umfassende Wiederverwendungslizenz. Das öffentliche Repository macht den Code sichtbar; ein Draft-Pull-Request schützt ihn nicht vor Öffentlichkeit. Einzelheiten in den separaten Importberichten unter `docs/`.

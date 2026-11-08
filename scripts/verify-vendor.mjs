@@ -7,7 +7,7 @@ import { dirname, resolve } from 'node:path';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'vendor', 'openflighthub');
 const expected = new Map([
-  ['api-client-sdk-typescript', 34],
+  ['api-client-sdk-typescript', 38],
   ['beast-decoder', 23],
   ['mode-s-adsb-parser', 27],
   ['phstl', 8],
@@ -32,5 +32,5 @@ for (const [name, count] of expected) {
   if (!pass) ok = false;
   total += files;
 }
-console.log(`Imported files: ${total}; expected: 102.`);
-if (!ok || total !== 102) process.exitCode = 1;
+console.log(`Imported files: ${total}; expected: 106.`);
+if (!ok || total !== 106) process.exitCode = 1;

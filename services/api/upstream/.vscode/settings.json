@@ -1,0 +1,8 @@
+{
+    "debug.internalConsoleOptions": "openOnSessionStart",
+    "i18nJsonEditor.forceKeyUPPERCASE": false,
+    "i18nJsonEditor.jsonSpace": "    ",
+    "i18nJsonEditor.supportedFolders": [
+        "i18n"
+    ]
+}

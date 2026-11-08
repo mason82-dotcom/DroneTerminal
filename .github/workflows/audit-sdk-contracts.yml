@@ -1,0 +1,70 @@
+name: Audit REST and WebSocket SDK contracts
+on:
+  push:
+    branches:
+      - main
+      - feat/import-openflighthub-web-app-20261108
+    paths:
+      - 'scripts/check-sdk-contracts.cjs'
+      - 'scripts/tests/sdk-contracts.test.cjs'
+      - '.github/workflows/audit-sdk-contracts.yml'
+      - 'vendor/openflighthub/api-client-sdk-typescript/src/**'
+      - 'vendor/openflighthub/api-client-sdk-typescript/package.json'
+      - 'vendor/openflighthub/api-client-sdk-typescript/dev/client_sdk.version'
+      - 'services/api/upstream/openapi_spec.yaml'
+      - 'services/api/upstream/src/live-websocket/definitions/**'
+      - 'services/api/upstream/src/routes/live.ts'
+      - 'services/api/upstream/src/app.ts'
+      - 'apps/web-app/src/api/index.ts'
+      - 'apps/web-app/package.json'
+      - 'apps/web-app/package-lock.json'
+  pull_request:
+    paths:
+      - 'scripts/check-sdk-contracts.cjs'
+      - 'scripts/tests/sdk-contracts.test.cjs'
+      - '.github/workflows/audit-sdk-contracts.yml'
+      - 'vendor/openflighthub/api-client-sdk-typescript/src/**'
+      - 'vendor/openflighthub/api-client-sdk-typescript/package.json'
+      - 'vendor/openflighthub/api-client-sdk-typescript/dev/client_sdk.version'
+      - 'services/api/upstream/openapi_spec.yaml'
+      - 'services/api/upstream/src/live-websocket/definitions/**'
+      - 'services/api/upstream/src/routes/live.ts'
+      - 'services/api/upstream/src/app.ts'
+      - 'apps/web-app/src/api/index.ts'
+      - 'apps/web-app/package.json'
+      - 'apps/web-app/package-lock.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sdk-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check syntax without external dependencies
+        run: |
+          node --check scripts/check-sdk-contracts.cjs
+          node --check scripts/tests/sdk-contracts.test.cjs
+      - name: Verify positive and negative SDK contract fixtures
+        run: node --test scripts/tests/sdk-contracts.test.cjs
+      - name: Verify all real SDK contracts and generate audit report
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/check-sdk-contracts.cjs --report "$RUNNER_TEMP/sdk-contract-audit.json"
+      - name: Verify no imported sources were changed by the audit
+        run: |
+          git diff --exit-code -- vendor/openflighthub/api-client-sdk-typescript/ services/api/upstream/ apps/web-app/
+          test -z "$(git status --porcelain -- vendor/openflighthub/api-client-sdk-typescript/ services/api/upstream/ apps/web-app/)"
+      - name: Preserve non-sensitive contract audit results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: droneterminal-sdk-contract-audit
+          path: ${{ runner.temp }}/sdk-contract-audit.json
+          if-no-files-found: warn
+          retention-days: 14

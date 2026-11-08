@@ -1,0 +1,20 @@
+:root {
+    --primary: #4EA0FF;
+
+    --accent: #E6F441;
+
+    --text-color: var(--neutral-lighter);
+
+    --text-background: var(--neutral-dark);
+
+    /* Neutrals */
+    --neutral-lighter: #e5e7eb;
+    --neutral-light: #CDCFDC;
+    --neutral-dark: #353535;
+    --neutral-darker: #292929;
+    --neutral-darkest: #1f1f1f;
+
+    --warning: #e17c4c;
+    --error: #C73333;
+    --success: #0f7a4c;
+}

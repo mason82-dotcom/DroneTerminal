@@ -1,0 +1,90 @@
+@use '_reset.scss';
+@use '_variables.scss';
+@use '_colors.scss';
+@use '_fonts.scss';
+@use '_fix_vueprime.scss';
+
+@import '/icons/bootstrap/bootstrap-icons.css';//TODO linking this to /fonts creates warnings in vite
+
+
+
+body {
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    font-family: 'Open Sans', Helvetica, sans-serif;
+    color: var(--neutral-light);
+}
+
+:root {
+
+}
+
+
+
+h1 {
+    font-size: 24px;
+}
+
+h2 {
+    font-size: 20px;
+}
+
+h3 {
+    font-size: 18px;
+}
+
+h4 {
+    font-weight: bold;
+}
+
+h5 {
+
+}
+
+h6 {
+    text-decoration: underline;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    margin-bottom: 0.5em;
+}
+
+
+a {
+    color: var(--neutral-medium);
+    font-style: italic;
+
+    &:hover {
+        color: var(--neutral-lighter) !important;
+    }
+
+    &:visited {
+        color: var(--neutral-medium);
+    }
+}
+
+
+$table_border_radius: 0.5em;
+
+table {
+    border-collapse: collapse;
+    border-radius: 0.2em;
+    border-style: hidden;
+
+    td {
+        padding: 0.2em 0.5em;
+        border: 0.1em solid transparent;
+    }
+
+    &:not(.uncolored) {
+
+        box-shadow: 0 0 0 1px var(--neutral-dark);
+
+        td {
+            border-color: var(--neutral-dark);
+        }
+    }
+
+}
+

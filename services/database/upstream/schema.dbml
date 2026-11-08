@@ -1,0 +1,431 @@
+//see https://dbdiagram.io/d/OpenFlightHub-6755970ee9daa85aca06b8ce
+
+
+Table users {
+  id serial [primary key, not null]
+  team_id integer
+  name text [not null]
+  email text [not null] //encrypted
+  email_hash text [not null] //bcrypt hash
+  password text //scrypt hash base64 encoded
+  login_token text //some unique token
+  session_token text //some unique token
+  stream_token text //some unique token
+  reset_code text //some unique token
+  created_at timestamptz [not null, default: `now()`]
+  state integer [not null, default: 0, note: "0 = invited, 1 = live, 2 = locked, 3 = deleted"]
+  locale text [not null, default: 'en-US']
+  created_by_user_id integer [not null]
+}
+Ref: users.team_id > teams.id
+Ref: users.created_by_user_id > users.id
+
+Table teams {
+  id serial [primary key, not null]
+  name text [not null]
+  owner_user_id integer [not null]
+  organisation_id integer
+  created_at timestamptz [not null, default: `now()`]
+  state integer [not null, default: 0, note: "0 = invited, 1 = live, 2 = locked, 3 = deleted"]
+  logo_file_id integer
+}
+Ref: teams.owner_user_id > users.id
+Ref: teams.organisation_id > organisations.id
+Ref: teams.logo_file_id > files.id
+
+Table organisations {
+  id serial [primary key, not null]
+  name text [not null]
+  owner_user_id integer [not null]
+  created_at timestamptz [not null, default: `now()`]
+  state integer [not null, default: 0, note: "0 = invited, 1 = live, 2 = locked, 3 = deleted"]
+  logo_file_id integer
+}
+Ref: organisations.owner_user_id > users.id
+Ref: organisations.logo_file_id > files.id
+
+Table files {
+  id serial [primary key, not null]
+  workspace_id integer
+  ext text [not null]
+  name text [not null] // full original name including extension
+  created_at timestamptz [not null, default: `now()`]
+  created_by integer [not null]
+  thumbnail_format text // if not null, thumbnail exists
+  thumbnail_generation_has_failed boolean [not null, default: false]
+  exif_data text//json encoded exif data
+  exif_data_generation_has_failed boolean [not null, default: false]
+}
+Ref: files.workspace_id > workspaces.id
+Ref: files.created_by > users.id
+
+
+Table workspaces {
+  id serial [primary key, not null]
+  name text [not null]
+  longitude float8 [not null]
+  latitude float8 [not null]
+  owner_team_id integer //either owner_team_id or owner_organisation_id must be set!
+  owner_organisation_id integer //either owner_team_id or owner_organisation_id must be set!
+  created_by integer [not null]
+
+  note: '''[TypescriptType]=
+
+export type DBType_Workspace = DBType_Workspace_ForOrganisation | DBType_Workspace_ForTeam
+
+export type DBType_Workspace_ForOrganisation = {
+    id: number;
+    name: string;
+    longitude: number;
+    latitude: number;
+    owner_organisation_id: number;
+    created_by: number;
+}
+
+export type DBType_Workspace_ForTeam = {
+    id: number;
+    name: string;
+    longitude: number;
+    latitude: number;
+    owner_team_id: number;
+    created_by: number;
+}
+'''
+}
+Ref: workspaces.owner_organisation_id > organisations.id
+Ref: workspaces.owner_team_id > teams.id
+Ref: workspaces.created_by > users.id
+
+Table workspace_permissions {
+  team_id integer [primary key, not null]
+  workspace_id integer [primary key, not null]
+}
+Ref: workspace_permissions.team_id > teams.id
+Ref: workspace_permissions.workspace_id > workspaces.id
+
+Table connections {
+  id serial [primary key, not null]
+  name text [not null]
+  secret text [not null]//used as credential together with id
+  session_token text
+  workspace_id integer [not null]
+  workspace_uuid text [not null, unique]// used for dji pilot 2 communication, format: xxxxxxxx-0000-42ae-84e6-123456789abc where xxx is the workspace_id like "00000001", the rest is random
+  remote_controller_id integer
+  last_drone_id integer // the "currently" connected drone (does not mean that the drone is currently online)
+  stream_is_alive boolean [not null, default: false]
+}
+Ref: connections.workspace_id > workspaces.id
+Ref: connections.remote_controller_id > remote_controllers.id
+Ref: connections.last_drone_id > drones.id
+
+
+Table remote_controllers {
+  id serial [primary key, not null]
+  serial_number text [not null, unique]
+  type integer [not null, default: 0, note: "0 = unknown, 1 = dji rc plus, 2 = dji rc pro enterprise, 3 = dji rc plus 2, 4 = dji smart controller"]
+}
+
+Table drones {
+  id serial [primary key, not null]
+  serial_number text [not null, unique]
+  name text [not null]
+  type integer [not null, default: 0, note: "0 = unknown, 1 = dji matrice 300, 2 = dji matrice 30, 3 = dji matrice 350, 4 = dji mavic 3"]
+  last_connection_id integer
+  current_flight_id integer // should never ever be null
+  in_flight boolean [not null, default: false]
+}
+Ref: drones.last_connection_id > connections.id
+Ref: drones.current_flight_id > flights.id
+
+
+Table flights {
+  id serial [primary key, not null]
+  drone_id integer [not null]
+  workspace_id integer [not null] // drones can change workspace, but this will always be the workspace_id at the time the flight was recorded
+  started_at timestamptz [not null, default: `now()`]
+  landed_at timestamptz// when drone lands
+  ended_at timestamptz
+  is_created_manually boolean [not null, default: false]// false = is created by telemetry input
+  is_changed_manually boolean [not null, default: false]// true if any data has been changed by a user (always true if is_created_manually = true)
+  updated_by integer
+}
+Ref: flights.drone_id > drones.id
+Ref: flights.workspace_id > workspaces.id
+Ref: flights.updated_by > users.id
+
+Table flight_users {
+  flight_id integer [primary key, not null]
+  user_id integer [primary key, not null]
+  type integer [not null, note: "0 = pilot, 1 = sensor operator, 2 = leader, 3 = air space monitoring"]
+  created_by integer [not null]
+}
+Ref: flight_users.flight_id > flights.id
+Ref: flight_users.user_id > users.id
+Ref: flight_users.created_by > users.id
+
+Table flight_data {
+  id serial [primary key, not null]
+  flight_id integer [not null]
+  received_at timestamptz [not null, default: `now()`]// when stored in db
+  created_at timestamptz [not null]// when drone created the data
+  type integer [not null, note: "0 = position"]
+  data jsonb [not null]
+}
+Ref: flight_data.flight_id > flights.id
+
+Table remote_controller_data {
+  id serial [primary key, not null]
+  remote_controller_id integer [not null]
+  type integer [not null, default: 0, note: "0 = position"]
+  data jsonb [not null]
+  created_at timestamptz [not null, default: `now()`]
+}
+Ref: remote_controller_data.remote_controller_id > remote_controllers.id
+
+Table drone_data {
+  id serial [primary key, not null]
+  drone_id integer [not null]
+  flight_id integer [not null]
+  type integer [not null, default: 0, note: "0 = position, 1 = telemetry"]
+  data jsonb [not null]
+  created_at timestamptz [not null, default: `now()`]
+}
+Ref: drone_data.drone_id > drones.id
+Ref: drone_data.flight_id > flights.id
+
+
+Table drone_media {
+  id serial [primary key, not null]
+  drone_id integer [not null]
+  flight_id integer [not null]
+  type integer [not null, note: "0 = video, 1 = picture, 2 = panorama"]
+  file_id integer [not null]
+  fingerprint text [not null]
+  tiny_fingerprint text [not null]
+  meta text//json encoded meta data
+  captured_at timestamptz
+  received_at timestamptz [not null, default: `now()`]// when stored in db
+  coverage text//json encoded coverage data
+  coverage_generated_at timestamptz [not null, default: `now()`]
+  camera_location text//json encoded {position: {longitude: number, latitude: number}, height: number}
+  camera_angles text//json encoded {heading: number, pitch: number, roll: number}
+}
+Ref: drone_media.drone_id > drones.id
+Ref: drone_media.file_id > files.id
+Ref: drone_media.flight_id > flights.id
+
+
+Table geo_objects {
+  id serial [primary key, not null]
+  uuid text [not null, unique, default: `uuid_generate_v4()`]
+  workspace_id integer // if null it is a global geoobject (currently only used for traffic)
+  name text [not null]
+  type integer [not null]// 0 = marking, 1 = traffic, 2 = unit, 3 = collision object
+  sub_type integer [not null]//depends on type, see below
+  config json [not null]
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+  geom geometry
+
+  is_synced_with_dji boolean [not null, default: false]// set to true when any connections websocket has been used to create the object
+
+  note: '''[TypescriptType]=
+
+export type DBType_Geo_Object = DBType_Geo_Object_Base<0, 0> | DBType_Geo_Object_Base<0, 1> | DBType_Geo_Object_Base<0, 2> | DBType_Geo_Object_Base<0, 3> |
+DBType_Geo_Object_Base<1, 0> | DBType_Geo_Object_Base<1, 1> | DBType_Geo_Object_Base<1, 2> | DBType_Geo_Object_Base<1, 3> | DBType_Geo_Object_Base<1, 4> |
+DBType_Geo_Object_Base<2, 0> | DBType_Geo_Object_Base<2, 1> | DBType_Geo_Object_Base<2, 2> | DBType_Geo_Object_Base<2, 3> | DBType_Geo_Object_Base<2, 4> | DBType_Geo_Object_Base<2, 5> | DBType_Geo_Object_Base<2, 6> |
+DBType_Geo_Object_Base<3, 0> | DBType_Geo_Object_Base<3, 1> | DBType_Geo_Object_Base<3, 2> | DBType_Geo_Object_Base<3, 3> | DBType_Geo_Object_Base<3, 4> | DBType_Geo_Object_Base<3, 5> | DBType_Geo_Object_Base<3, 6>
+
+export type DBType_Geo_Object_Base<type extends DBType_Geo_Object_TypeType, sub_type extends DBType_Geo_Object_SubTypeType<type>> = {
+    id: number;
+    uuid: string;
+    workspace_id?: number;
+    name: string;
+    type: type;
+    sub_type: sub_type;
+    config: DBType_Geo_Object_ConfigType<type, sub_type>;
+    created_at: string;
+    updated_at: string;
+    is_synced_with_dji: boolean;
+    geom: ST_Geometry
+}
+
+
+export type DBType_Geo_Object_TypeType = 0|1|2|3
+
+export const DBType_Geo_Object_Type_TYPES = {
+  marking: 0,
+  traffic: 1,
+  unit: 2,
+  collision: 3
+} as const
+
+export type DBType_Geo_Object_SubTypeType<type extends DBType_Geo_Object_TypeType> =
+    type extends 0 ? (0|1|2|3) :
+    type extends 1 ? (0|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15) :
+    type extends 2 ? (0|1|2|3|4|5|6) :
+    type extends 3 ? (0|1|2|3|4|5|6) : unknown
+
+
+export const DBType_Geo_Object_SubType_TYPES = {
+  marking: {
+    point: 0,
+    line: 1,
+    polygon: 2,
+    circle: 3
+  },
+  traffic: {
+    other: 0,
+    moto_glider: 1,
+    tow_plane: 2,
+    helicopter: 3,
+    parachute: 4,
+    drop_plane: 5,
+    hang_glider: 6,
+    para_glider: 7,
+    powered_aircraft: 8,
+    jet_aicraft: 9,
+    ufo: 10,
+    balloon: 11,
+    airship: 12,
+    uav: 13,
+    ground_support: 14,
+    static_object: 15
+  },
+  unit: {
+    airplane: 0,
+    helicopter: 1,
+    uav: 2,
+    pilot: 3,
+    ground_vehicle: 4,
+    ground_staff: 5,
+    other: 6
+  },
+  collision: {
+    power_tower: 0,
+    power_pole: 1,
+    power_line_large: 2,
+    power_line_small_or_catenary: 3,
+    aerialway_pylon: 4,
+    aerialway: 5,
+    building: 6
+  }
+} as const
+
+export type DBType_Geo_Object_ConfigType<type extends DBType_Geo_Object_TypeType, sub_type extends DBType_Geo_Object_SubTypeType<type>> = type extends 0 ? (
+    sub_type extends 0 ? {point: [number, number, number], color: string} :
+    sub_type extends 1 ? {line: [number, number, number][], color: string} :
+    sub_type extends 2 ? {polygon: [number, number, number][], color: string} :
+    sub_type extends 3 ? {center: [number, number, number], radius: number, color: string} : unknown
+) : type extends 1 ? (
+    {longitude: number, latitude: number, height: number, heading?: number, speed?: number}
+) : type extends 2 ? (
+    {longitude: number, latitude: number, symbol: string, height?: number, heading?: number, speed?: number}
+) : type extends 3 ? (
+    sub_type extends 0 ? {id: number, point: [number, number, number]} :
+    sub_type extends 1 ? {id: number, point: [number, number, number]} :
+    sub_type extends 2 ? {id: number, line: [number, number, number][]} :
+    sub_type extends 3 ? {id: number, line: [number, number, number][]} :
+    sub_type extends 4 ? {id: number, point: [number, number, number]} :
+    sub_type extends 5 ? {id: number, line: [number, number, number][]} :
+    sub_type extends 6 ? {id: number, polygon: [number, number, number][]} : unknown
+) : unknown
+
+  '''
+}
+Ref: geo_objects.workspace_id > workspaces.id
+
+Table missions {
+  id serial [primary key, not null]
+  workspace_id integer [not null]
+  name text [not null]
+  description text
+  notes text
+  created_by integer [not null]
+  updated_by integer [not null]
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+  assigned_to_team_id integer
+  state integer [not null, default: 0, note: "0 = planned, 1 = accepted, 2 = in progress, 3 = done, 4 = rejected, 5 = failed, 6 = canceled"]
+}
+Ref: missions.workspace_id > workspaces.id
+Ref: missions.created_by > users.id
+Ref: missions.assigned_to_team_id > teams.id
+Ref: missions.updated_by > users.id
+
+Table tasks {
+  id serial [primary key, not null]
+  mission_id integer [not null]
+  name text [not null]
+  description text
+  notes text
+  created_by integer [not null]
+  updated_by integer [not null]
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+  state integer [not null, default: 0, note: "0 = planned, 1 = accepted, 2 = in progress, 3 = done, 4 = rejected, 5 = failed, 6 = canceled"]
+}
+Ref: tasks.mission_id > missions.id
+Ref: tasks.created_by > users.id
+Ref: tasks.updated_by > users.id
+
+Table task_geo_objects {
+  geo_object_id integer [primary key, not null]
+  task_id integer [primary key, not null]
+}
+Ref: task_geo_objects.geo_object_id > geo_objects.id
+Ref: task_geo_objects.task_id > tasks.id
+
+Table collision_object_coverage_areas {
+  id serial [primary key, not null]
+  geom geometry [not null]//only point
+  radius float8 [not null]
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+  note: '''[TypescriptType]=
+
+export type DBType_Collision_Object_Coverage_Area = {
+    id: number;
+    geom: ST_Point;
+    radius: number;
+    created_at: string;
+    updated_at: string;
+}
+'''
+}
+
+Table collision_object_geo_objects {
+  geo_object_id integer [not null]
+  coverage_area_id integer [not null]
+}
+Ref: collision_object_geo_objects.geo_object_id > geo_objects.id
+Ref: collision_object_geo_objects.coverage_area_id > collision_object_coverage_areas.id
+
+Table live_share_keys {
+  id serial [primary key, not null]
+  key text [not null]
+  name text
+  connection_id integer [not null]
+  created_at timestamptz [not null, default: `now()`]
+  created_by integer [not null]
+  valid_until timestamptz [not null, default: `now() + interval '1 day'`]
+}
+
+Ref: live_share_keys.connection_id > connections.id
+Ref: live_share_keys.created_by > users.id
+
+// meta
+
+Table api_endpoint_performances {
+  id serial [primary key, not null]
+  url_with_id_params text [not null]
+  endpoint text [not null]
+  http_method text [not null]
+  query text
+  run_time numeric [not null]//ms
+  work_time numeric [not null]//ms
+  started_at timestamptz [not null]
+  logged_at timestamptz [not null, default: `now()`]
+  status_code integer [not null]
+  content_length integer [not null]
+}

@@ -1,0 +1,8 @@
+input:autofill, input:autofill:active, input:autofill:focus, input:autofill:hover {
+    -webkit-box-shadow: initial;
+}
+
+#app {
+    --p-tabs-tablist-background: transparent;
+    --p-tabs-tabpanel-background: transparent;
+}

@@ -1,0 +1,7 @@
+/node_modules
+/dist
+/secrets.json
+/openapi_spec.json
+/bundled.yaml
+/connector_logs
+/dji_cloud_api_logs

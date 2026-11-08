@@ -1,0 +1,97 @@
+{
+
+    "login": {
+        "username": "Username/Email",
+        "password": "Password",
+        "sign_in": "Sign in",
+        "reset_password": "Reset Password",
+        "auth_error": "Invalid credentials"
+    },
+    "logout": {
+        "logout": "Logout"
+    },
+
+    "hub": {
+        "hub": "Hub",
+        "go_to_hub": "Go to the Hub"
+    },
+
+    "link": {
+        "linked_to": "Linked to Workspace \"{workspace}\" on {platform}",
+        "select_workspace": "Select workspace to link to",
+        "set_name_for_link": "Set a name for this connection",
+        "connection_name": "Connection Name",
+        "link": "Link",
+        "unlink_workspace": "Unlink Workspace",
+        "is_connected": "Connected",
+        "is_not_connected": "Not connected",
+        "must_login_before_can_link": "You have to login first before you can link this device.",
+
+        "connectable_device_connect_now": "Seems like you are on a connectable device. Do you want to connect your device now?",
+        "manage_connectable_device_now": "Manage connection now",
+        "device_not_supported": "This devices does not support the OpenFlightHub connect link",
+        "dji-pilot-2": {
+
+        },
+
+        "reset": "Reset the link",
+        "must_restart_remote_controller_and_visit_this_page": "Please restart your remote controller and visit this page again."
+    },
+
+
+    "auth": {
+        "change_password": "Change Password",
+        "password_restrictions": "Password must be at least 10 characters long.",
+        "current_password": "Current password",
+        "new_password": "Set your new password now",
+        "repeat_new_password": "Repeat new Password",
+        "email": "Email",
+        "finish_registration": "Please follow these steps to finish setting up your account.",
+        "reset_password_now": "Reset your password now."
+    },
+
+    "actions": {
+        "get_started": "Get Started",
+        "back": "Back",
+        "next": "Next",
+        "finish": "Finish",
+        "return_to_home": "Return to Home",
+        "ok": "Okay",
+        "save_changes": "Save Changes",
+        "cancel": "Cancel",
+        "browse_file": "Browse",
+        "download": "Download",
+        "create": "Create",
+        "edit": "Edit",
+        "confirm": "Confirm",
+        "accept": "Accept",
+        "decline": "Decline"
+    },
+
+    "time_and_data": {
+        "time": {
+            "d": "0 days | {n} day | {n} days",
+            "h": "0 hours | {n} hour | {n} hours",
+            "m": "0 mins | {n} min | {n} mins",
+            "s": "0 secs | {n} sec | {n} secs",
+            "ms": "0 ms | {n} ms | {n} ms"
+        },
+        "duration": "Duration",
+        "formats": {
+            "day": {
+                "short": "ddd D MMM"
+            },
+            "time": {
+                "hours_and_minutes": "h:mm a"
+            }
+        }
+    },
+
+    "clipboard": {
+        "added_to": "Added to clipboard"
+    },
+
+    "info_panel": {
+        "information": "Information"
+    }
+}

@@ -1,0 +1,61 @@
+name: Verify DroneTerminal Terrain snapshot
+on:
+  push:
+    branches:
+      - main
+      - feat/import-openflighthub-web-app-20261108
+    paths:
+      - 'services/terrain/**'
+      - '.github/workflows/verify-terrain.yml'
+  pull_request:
+    paths:
+      - 'services/terrain/**'
+      - '.github/workflows/verify-terrain.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source:
+    name: Terrain archive and API contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify source tree and expected Terrain interfaces without starting services
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:services/terrain/upstream)" = "b07968e12dfb1030c3167e41f1cca860a2c2fe2d"
+          test "$(git ls-tree -r --name-only HEAD:services/terrain/upstream | wc -l)" -eq 31
+          test -f services/terrain/upstream/openapi_spec.yaml
+          test -f services/terrain/upstream/src/routes/elevation.ts
+          test -f services/terrain/upstream/src/routes/cameraGroundCoverage.ts
+          test -f services/terrain/upstream/src/util/lineOfSight.ts
+          test -f services/terrain/upstream/src/util/hgt.ts
+          test -f services/api/upstream/src/app.ts
+          test -f services/database/upstream/schema.dbml
+          test -f apps/web-app/src/util/terrain.ts
+          grep -Fq 'terrain_service_adress' services/api/upstream/README.md
+          grep -Fq '/elevation' services/terrain/upstream/src/app.ts
+          grep -Fq '/camera-ground-coverage' services/terrain/upstream/src/app.ts
+          ! find services/terrain/upstream -type f -name '*.hgt' | grep -q .
+          echo 'PASS: source snapshot, endpoints and cross-component reference; no terrain HGT data bundled'
+  typecheck:
+    name: Terrain TypeScript and isolated unit test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: services/terrain/upstream
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: services/terrain/upstream/package-lock.json
+      - name: Install dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Compile-check TypeScript without opening HTTP ports
+        run: ./node_modules/.bin/tsc --project tsconfig.json --noEmit --pretty false
+      - name: Run deterministic pure line-of-sight tests (no terrain tiles)
+        run: ./node_modules/.bin/jest --runInBand src/__tests__/util/lineOfSight.test.ts

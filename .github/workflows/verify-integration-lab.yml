@@ -1,0 +1,68 @@
+name: Verify isolated API and PostGIS integration lab
+on:
+  push:
+    branches:
+      - main
+      - feat/import-openflighthub-web-app-20261108
+    paths:
+      - 'services/integration-lab/**'
+      - '.github/workflows/verify-integration-lab.yml'
+  pull_request:
+    paths:
+      - 'services/integration-lab/**'
+      - '.github/workflows/verify-integration-lab.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    name: Internal DB / auth / workspace / WS (synthetic)
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: services/api/upstream/package-lock.json
+      - name: Verify lab scripts and Docker compose source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check services/integration-lab/server.cjs
+          node --check services/integration-lab/smoke.test.cjs
+      - name: Install only existing API dependencies, without lifecycle scripts
+        working-directory: services/api/upstream
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Create unique CI-only credentials
+        shell: bash
+        run: |
+          echo "DRONETERMINAL_LAB_DB_ADMIN_PASSWORD=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "DRONETERMINAL_LAB_DB_READ_PASSWORD=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "DRONETERMINAL_LAB_LOGIN_PASSWORD=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+      - name: Start internal-only PostGIS lab, seed and API; verify; remove volume
+        shell: bash
+        env:
+          COMPOSE_PROJECT_NAME: dt-ci-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          compose=(docker compose -f services/integration-lab/compose.yml)
+          cleanup() {
+            code=$?
+            if [ "$code" -ne 0 ]; then
+              echo "FAILED LAB RUN: service states and last 60 lines (no passwords are logged)"
+              "${compose[@]}" ps -a || true
+              "${compose[@]}" logs --no-color --tail 60 db seed api || true
+            fi
+            "${compose[@]}" down -v --remove-orphans || true
+          }
+          trap cleanup EXIT
+          "${compose[@]}" config --quiet
+          "${compose[@]}" up -d --wait --wait-timeout 180 api
+          "${compose[@]}" run --rm --no-deps checker
+          echo "PASS: read-only lab real PostGIS, synthetic auth, tenant isolation and pre-upgrade WS protection"
+          git diff --exit-code -- services/api/upstream/ services/database/upstream/ vendor/openflighthub/
+          test -z "$(git status --porcelain -- services/api/upstream/ services/database/upstream/ vendor/openflighthub/)"
