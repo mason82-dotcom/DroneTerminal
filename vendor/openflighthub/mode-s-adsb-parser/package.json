@@ -1,0 +1,39 @@
+{
+  "name": "mode-s-adsb-parser",
+  "version": "0.3.2",
+  "author": "OpenFlightHub <mail@openflighthub.org> (https://openflighthub.org)",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openflighthub/mode-s-adsb-parser.git"
+  },
+  "keywords": [
+    "adsb",
+    "modes",
+    "1090",
+    "parser"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/openflighthub/mode-s-adsb-parser/issues"
+  },
+  "homepage": "https://github.com/openflighthub/mode-s-adsb-parser",
+  "scripts": {
+    "build": "tsup",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.12.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "tsup": "^8.3.5",
+    "typescript": "^5.4.2"
+  }
+}
