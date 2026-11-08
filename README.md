@@ -2,11 +2,12 @@
 
 Eigenständiges Entwicklungsrepository für eine DJI-nahe Drohnen-Bodenstation und die strukturierte Auswertung des archivierten Projekts [OpenFlightHub](https://github.com/OpenFlightHub).
 
-> **Wichtig:** Der ausdrücklich angeforderte Web-App-Snapshot liegt unter apps/web-app/. Das Archiv enthält keine Wiederverwendungslizenz. Die Weitergabe und der Merge in main erfordern eine Rechteprüfung. Das zugehörige Backend fehlt; dies ist keine einsatzfähige Bodenstation.
+> **Wichtig:** Die vom Nutzer bereitgestellten OpenFlightHub-Snapshots für Web-App und Datenbank wurden unter apps/web-app/ und services/database/upstream/ importiert. Für beide Archive ist keine umfassende Wiederverwendungslizenz nachgewiesen; Weitergabe und Merge in main erfordern eine Rechteprüfung. Das Backend fehlt weiterhin; dies ist keine einsatzfähige Bodenstation.
 
 ## Inhalt
 
 - apps/web-app/: unveränderter Vue-/TypeScript-Web-App-Quellsnapshot aus der ZIP; siehe docs/web-app-import.md.
+- services/database/upstream/: byteidentisches OpenFlightHub-Datenbankarchiv aus der ZIP. Dienste und Original-Skripte werden nicht ausgeführt; siehe docs/database-import.md. Optionales isoliertes PostGIS-Labor unter services/database/compose.lab.yml.
 
 - `vendor/openflighthub/`: originalgetreue, **MIT-lizenzierte** Quellmodule mit beibehaltenen Lizenzdateien (siehe Importprotokoll); große binäre Demos/Testfixtures werden ausgelassen.
 - `docs/openflighthub-source-inventory.md`: Inventar aller 16 Original-Repositories und Übernahmegrenzen.
@@ -16,12 +17,12 @@ Eigenständiges Entwicklungsrepository für eine DJI-nahe Drohnen-Bodenstation u
 
 ## Regeln
 
-Keine verdeckte Lizenzannahme. Für die auf ausdrücklichen Wunsch importierte Web-App sind die Rechte weiterhin ungeklärt; keine DJI-Lizenzumgehung, keine automatisch aktivierte Fernsteuerung oder Flugmission. Produktiver Einsatz erfordert gesonderte Tests, sichere Konfiguration und ausdrückliche Freigabe.
+Keine verdeckte Lizenzannahme. Für die auf ausdrücklichen Wunsch importierten Web-App- und Datenbank-Snapshots sind die Rechte weiterhin ungeklärt; keine DJI-Lizenzumgehung, keine automatisch aktivierte Fernsteuerung oder Flugmission. Produktiver Einsatz erfordert gesonderte Tests, sichere Konfiguration und ausdrückliche Freigabe.
 
 Die MIT-Lizenzen der übernommenen Module bleiben im jeweiligen Modulverzeichnis erhalten. Die Originalautoren sind in den Importdokumenten angegeben.
 
 ## Nächste Schritte
 
-1. Vor Merge und Weitergabe die Rechte an apps/web-app/ klären oder die UI eigenständig neu entwickeln.
+1. Vor Merge und Weitergabe Rechte an apps/web-app/ und services/database/upstream/ klären oder die fehlenden Komponenten eigenständig neu entwickeln.
 2. Importierte Bibliotheken isoliert bauen und testen; sie sind noch nicht in eine neue Anwendung integriert.
 3. DJI-Funktionsumfang anhand der offiziellen Cloud-API-Dokumentation und echter Hardware verifizieren.

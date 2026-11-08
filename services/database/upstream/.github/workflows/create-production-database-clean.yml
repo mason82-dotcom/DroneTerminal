@@ -1,0 +1,66 @@
+env:
+  PROJECT_NAME: ofh-database
+
+name: create-production-database-clean
+on: [workflow_dispatch]
+jobs:
+  deploy:
+    runs-on: [server]
+    steps:
+      - run: echo "HOME=$(pwd)" >> $GITHUB_ENV #fix https://github.com/actions/runner/issues/1864
+
+      - name: Clean Workspace Folder
+        run: |
+          rm -rf ./* || true
+          rm -rf ./.??* || true
+
+      - uses: actions/checkout@v4
+        with:
+          path: repo
+
+      - name: Download and stop old docker container
+        run: |
+          docker pull postgis/postgis:18-3.6
+          docker stop ${{ env.PROJECT_NAME }} || true
+
+      - name: Remove old docker container and data and files
+        run: |
+          docker rm ${{ env.PROJECT_NAME }} || true
+          rm -rf /data
+          mkdir /ofh_files || true
+          rm -rf /ofh_files/* || true
+
+      - name: Start new docker container
+        run: |
+          docker run -itd --restart unless-stopped -e POSTGRES_USER=${{secrets.POSTGRES_USER}} -e POSTGRES_PASSWORD=${{secrets.POSTGRES_PASSWORD}} --network=ofh -p 127.0.0.1:5000:5432 -v /data:/var/lib/postgresql --name ${{ env.PROJECT_NAME }} postgis/postgis:18-3.6
+
+      - name: Wait until database is online
+        run: |
+          cd repo
+          sleep 5
+          cat wait-for.sh | sh -s -- localhost:5000 -- echo "Database is up"
+
+      - name: Initialize database
+        run: |
+          cd repo
+          cat 0_init_database.sql | docker exec -i ${{ env.PROJECT_NAME }} psql -v ON_ERROR_STOP=1 --dbname=postgresql://${{secrets.POSTGRES_USER}}:${{secrets.POSTGRES_PASSWORD}}@localhost:5432
+          cat 1_init_tables.sql | docker exec -i ${{ env.PROJECT_NAME }} psql -v ON_ERROR_STOP=1 --dbname=postgresql://${{secrets.POSTGRES_USER}}:${{secrets.POSTGRES_PASSWORD}}@localhost:5432
+          cat 2_init_users_and_permissions.sql | docker exec -i ${{ env.PROJECT_NAME }} psql -v ON_ERROR_STOP=1 --dbname=postgresql://${{secrets.POSTGRES_USER}}:${{secrets.POSTGRES_PASSWORD}}@localhost:5432
+          cat 3_setup_triggers.sql | docker exec -i ${{ env.PROJECT_NAME }} psql -v ON_ERROR_STOP=1 --dbname=postgresql://${{secrets.POSTGRES_USER}}:${{secrets.POSTGRES_PASSWORD}}@localhost:5432
+
+
+      - name: Fill /ofh_files with example data
+        run: |
+          cd repo
+          rm -r /ofh_files/* || true
+          cp -r example_files/* /ofh_files/
+
+      - name: Fill database with example data
+        run: |
+          cd repo
+          cat X_fill_with_example_data.sql | docker exec -i ${{ env.PROJECT_NAME }} psql -v ON_ERROR_STOP=1 --dbname=postgresql://${{secrets.POSTGRES_USER}}:${{secrets.POSTGRES_PASSWORD}}@localhost:5432
+
+      - name: Alter user passwords # TODO: doesnt work for api user? Please perform manually via postgres root account
+        run: |
+          echo "${{secrets.ALTER_USER_SQL}}" > alter_user.sql
+          cat alter_user.sql | docker exec -i ${{ env.PROJECT_NAME }} psql -v ON_ERROR_STOP=1 --dbname=postgresql://${{secrets.POSTGRES_USER}}:${{secrets.POSTGRES_PASSWORD}}@localhost:5432
