@@ -1,6 +1,6 @@
 # DroneTerminal: Architekturentwurf (eigenständig)
 
-Die Architekturplanung ist ein eigenständiger Entwurf. Separat importierte Quell-Snapshots (Web-App, Datenbank und API) sind **nicht** als freigegebene, produktiv verwendbare Komponenten zu verstehen; ihre Wiederverwendungsrechte sind ungeklärt.
+Die Architekturplanung ist ein eigenständiger Entwurf. Separat importierte Quell-Snapshots (Web-App, Datenbank, API und Terrain) sind **nicht** als freigegebene, produktiv verwendbare Komponenten zu verstehen; ihre Wiederverwendungsrechte sind ungeklärt.
 
 ## Vorgesehene Komponenten
 
@@ -22,4 +22,4 @@ Die Architekturplanung ist ein eigenständiger Entwurf. Separat importierte Quel
 
 ## Betrieb
 
-Der vorliegende Repo-Stand ist **ein Quellarchiv mit Web-App/API, ein isoliertes Datenbank-Testlabor und ein Entwurf** und darf nicht als einsatzfähiges Drohnensteuerungssystem behandelt werden. Keine aktiven DJI-Kommandos, keine Cloud-Zugangsdaten und kein automatischer Deploymentpfad.
+Der vorliegende Repo-Stand ist **ein Quellarchiv mit Web-App/API/Terrain, ein isoliertes Datenbank-Testlabor und ein Entwurf** und darf nicht als einsatzfähiges Drohnensteuerungssystem behandelt werden. Keine aktiven DJI-Kommandos, keine Cloud-Zugangsdaten und kein automatischer Deploymentpfad.
