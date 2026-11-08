@@ -14,7 +14,7 @@
 
 **Nicht übernommen:** 39 Dateien. Im Detail:
 
-- 11 IDE-/Editor-Einstellungsdateien (`.vscode/`).
+- 10 IDE-/Editor-Einstellungsdateien (`.vscode/`).
 - `beast-decoder/src/example_lines.ts` (~7,6 MB), großes Beispielmaterial.
 - `mode-s-adsb-parser/tests/example_messages_base64.txt` (~0,5 MB), Testnachrichten.
 - 27 grafische/binäre DEM-, STL-, TIF- und Screenshot-Demodateien aus `phstl/demo/` (z. B. große STL-Geometriemodelle).
