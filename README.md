@@ -61,3 +61,22 @@ auf einem ephemeren Mock-Server an `127.0.0.1`.
 Es existiert noch kein nachgewiesener vollständiger Live-/Hardwarebetrieb,
 kein sicher gehärteter API-/MQTT-/RBAC-Stack und keine Freigabe zum
 produktiven Einsatz.
+
+## Isolierter PostGIS- und Authentifizierungs-Integrationstest
+
+Unter `services/integration-lab/` befindet sich ein eigener,
+**nicht produktiver** CI-Laboradapter für die PostGIS-Datenbank und die
+wichtigsten Frontend-kompatiblen REST-/WebSocket-Routen. Er nutzt zwei
+synthetische Nutzer und zwei berechtigungsgetrennte Workspaces,
+eine ausschließliche SELECT-Datenbankrolle und ein internes Docker-Netz
+**ohne veröffentlichte Ports**. Getestet werden Login-/Cookie-Lebenszyklus,
+`/user/self`, `/workspace/my-workspaces`, abgewiesene DB-Schreibzugriffe,
+mandantenbezogene Datenfilterung und WebSocket-Authentifizierung vor
+dem Upgrade. Der initiale erfolgreiche CI-Beleg:
+[GitHub Actions #42531544810](https://github.com/mason82-dotcom/DroneTerminal/actions/runs/42531544810).
+
+**Grenze:** Der Original-Express-Launcher wird bewusst nicht gestartet,
+weil er zusätzliche Simulations- und MQTT-Funktionen aktiviert.
+Das Vue-Frontend wurde noch nicht im Browser gegen die Labor-API getestet.
+Diese Tests belegen keine Betriebs- oder DJI-Hardwarefreigabe.
+Details unter [docs/integration-lab.md](docs/integration-lab.md).
