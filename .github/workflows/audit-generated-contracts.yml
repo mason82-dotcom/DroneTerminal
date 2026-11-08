@@ -45,7 +45,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/check-generated-contracts.cjs --report "$RUNNER_TEMP/contract-audit.json"
+          node scripts/check-generated-contracts.cjs --report "$RUNNER_TEMP/contract-audit.json" --fail-on-drift
       - name: Verify original API schemas and generator have not been modified
         shell: bash
         run: |
