@@ -7,6 +7,8 @@ on:
     paths:
       - 'apps/web-app/src/api/**'
       - 'scripts/tests/web-transport-smoke.test.mjs'
+      - 'scripts/tests/register-ts-resolution.mjs'
+      - 'scripts/tests/register-ts-resolution.mjs'
       - '.github/workflows/verify-web-transport.yml'
   pull_request:
     paths:
@@ -29,7 +31,7 @@ jobs:
       - name: Verify transport test syntax and run isolated loopback smoke
         run: |
           node --check scripts/tests/web-transport-smoke.test.mjs
-          node --experimental-strip-types --test scripts/tests/web-transport-smoke.test.mjs
+          node --experimental-strip-types --import ./scripts/tests/register-ts-resolution.mjs --test scripts/tests/web-transport-smoke.test.mjs
       - name: Verify imported SDK and backend source remain unchanged
         run: |
           git diff --exit-code -- vendor/openflighthub/api-client-sdk-typescript/ services/api/upstream/ services/database/upstream/
