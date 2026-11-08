@@ -53,3 +53,17 @@ test('Real imported API, SDK and WebSocket definitions are internally consistent
   assert.equal(result.rest.explicitlyExcluded, 12);
   assert.ok(result.websocket.every(x => x.same));
 });
+
+test('REST SDK parser rejects duplicate method/path declarations', () => {
+  const { sdk } = fixtures();
+  const repeated = sdk + "\nurl: '/example/2',\nmethod: 'post',\nisFormData: false,\n";
+  assert.throws(() => parseSdkRest(repeated), /Duplicate SDK operation/);
+});
+test('OpenAPI parser rejects duplicate method/path declarations', () => {
+  const { spec } = fixtures();
+  const repeated = spec + "\n  /example/3:\n    get:\n";
+  assert.throws(() => parseOpenApi(repeated), /Duplicate OpenAPI operation/);
+});
+test('REST contract parser fails closed on unexpectedly short or empty SDK output', () => {
+  assert.throws(() => parseSdkRest("API_VERSION: '0.22.0'\n"), /unexpectedly found only 0 operations/);
+});
