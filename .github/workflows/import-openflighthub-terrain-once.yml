@@ -1,0 +1,174 @@
+name: One-time OpenFlightHub Terrain import
+on:
+  push:
+    branches:
+      - feat/import-openflighthub-web-app-20261108
+    paths:
+      - .github/workflows/import-openflighthub-terrain-once.yml
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Import exact source snapshot and remove bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error --retry 3 \
+            "https://api.github.com/repos/OpenFlightHub/terrain/zipball/ff824d2f6f6cd5db1a5908942187407c60c70067" \
+            --output "$RUNNER_TEMP/openflighthub-terrain.zip"
+          python3 - <<'PY'
+          import os, shutil, subprocess, zipfile
+          from pathlib import Path, PurePosixPath
+          
+          archive = Path(os.environ["RUNNER_TEMP"]) / "openflighthub-terrain.zip"
+          source = Path(os.environ["RUNNER_TEMP"]) / "droneterminal-terrain-verified"
+          dest = Path("services/terrain/upstream")
+          source.mkdir(parents=True, exist_ok=False)
+          count = total = 0
+          with zipfile.ZipFile(archive) as z:
+              for entry in z.infolist():
+                  if entry.is_dir():
+                      continue
+                  parts = PurePosixPath(entry.filename).parts
+                  if len(parts) < 2 or any(p in ("", ".", "..") for p in parts):
+                      raise RuntimeError("Unsafe ZIP path: " + entry.filename)
+                  if ((entry.external_attr >> 16) & 0o170000) not in (0, 0o100000):
+                      raise RuntimeError("Unexpected ZIP entry type: " + entry.filename)
+                  target = source.joinpath(*parts[1:])
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  target.write_bytes(z.read(entry))
+                  count += 1
+                  total += entry.file_size
+          if (count, total) != (31, 8949770):
+              raise RuntimeError(f"Unexpected ZIP inventory: {count} files, {total} bytes")
+          subprocess.run(["git", "init", "-q", str(source)], check=True)
+          subprocess.run(["git", "-C", str(source), "add", "-A"], check=True)
+          tree = subprocess.check_output(["git", "-C", str(source), "write-tree"], text=True).strip()
+          if tree != "b07968e12dfb1030c3167e41f1cca860a2c2fe2d":
+              raise RuntimeError("Archive differs from user-uploaded, verified source: " + tree)
+          shutil.rmtree(source / ".git")
+          if dest.exists():
+              raise RuntimeError("Destination already exists: " + str(dest))
+          dest.parent.mkdir(parents=True, exist_ok=True)
+          shutil.copytree(source, dest)
+          Path("docs/terrain-import.md").write_text("""# OpenFlightHub Terrain-Import in DroneTerminal
+          
+          ## Herkunft und Integritätsprüfung
+          
+          - Benutzerarchiv: terrain-master.zip
+          - Upstream: https://github.com/OpenFlightHub/terrain
+          - Fixierter Quell-Commit: ff824d2f6f6cd5db1a5908942187407c60c70067
+          - Original-Tree-SHA: b07968e12dfb1030c3167e41f1cca860a2c2fe2d
+          - Quellstand: 15.10.2025
+          - Ziel: services/terrain/upstream/
+          - Umfang: 31 Dateien, 8.949.770 Bytes, darunter ein grosses Beispiel-JPEG
+          - Der gesamte Git-Baum inklusive Dateinamen, Modus und Daten ist identisch
+            mit dem Benutzerarchiv. Web-App, API, Datenbank und Vendor bleiben unveraendert.
+          
+          ## Modul und Schnittstellen
+          
+          - TypeScript / Express-Dienst mit POST /elevation:
+            Anforderung {longitude, latitude}, Antwort {elevation}.
+          - POST /camera-ground-coverage: Koordinaten, Hoehe, Blickrichtung,
+            Kameraneigung und horizontales/vertikales FoV; liefert {coverage}.
+          - Sichtlinien-/Terrain-Sampling-Utilities und OpenAPI 3.0.3-Spezifikation.
+          - Verwendung der node-hgt TileSet-Bibliothek; Daten unter dem relativen
+            Verzeichnis terrain_tiles/ (in .gitignore, nicht im Archiv).
+          - Das importierte API-Backend dokumentiert die Konfigurationsoption
+            terrain_service_adress (Original-Schreibweise, mit einem d).
+          - Die Web-App hat eine eigene Cesium-basierte Terrainabfrage; kein
+            automatischer Austausch des Terrain-Providers durch diesen Import.
+          
+          ## Sicherheits- und Reifegradgrenzen
+          
+          - Keine LICENSE-Datei im Terrain-Archiv; Weitergaberechte nicht verifiziert.
+            Vor Merge/Redistribution und Modifikation zusaetzlich klaeren.
+          - Original src/launch.ts bindet Port 6007 an 0.0.0.0.
+            Es wird hier kein Dienst gestartet, kein Port geoeffnet und keine
+            Verbindung zur Produktiv-API oder zu DJI-Hardware hergestellt.
+          - Original-Upstream-Deploy-Workflow enthaelt rm -rf, stop/rm/start
+            von Containern und Secrets-Handling. Der Workflow befindet sich
+            ausschliesslich verschachtelt in services/terrain/upstream/.github/
+            und wird NICHT von GitHub Actions im Zielrepo ausgefuehrt.
+          - Keine HGT/SRTM-Tiles enthalten: echte Hoehenwerte,
+            Sichtlinien und Bodenkontur sind NICHT end-to-end verifiziert.
+          - Eingaben werden derzeit vor allem mit isNaN validiert;
+            Wertebereiche fuer Longitude/Latitude/FoV, maximale Komplexitaet
+            und Fehler/Timeouts sind noch zu haerten. POST-/camera-ground-coverage
+            kann bei grossem FoV aufwendig sein; vor Exposition Limits und Auth
+            einfuehren.
+          - Hoehenreferenzen (Ellipsoid, Geoid, MSL, AGL) und Datenqualitaet
+            muessen fuer missionskritische Darstellung vereinheitlicht werden.
+          - Keine Drohnensteuerung, kein DJI-Livebetrieb und keine produktive
+            Geodaten-Genauigkeitsfreigabe durch diesen Import.
+          
+          ## Technische Checks
+          
+          .github/workflows/verify-terrain.yml validiert die exakte Quellkopie,
+          die Schnittstellendateien und den nicht startenden TypeScript-Build.
+          Eine begrenzte Route-Validierung und reine Sichtlinien-Unit-Tests
+          koennen ohne Geländekacheln durchgefuehrt werden; echte 200-Antworten
+          mit Geländehöhen verlangen nachvollziehbare lokale Kacheln.
+          
+          ## Nächste Schritte
+          
+          1. Lizenzrechte fuer alle importierten OpenFlightHub-Komponenten klaeren.
+          2. Isolierten Terrain-Testdienst nur auf Loopback/privatem Testnetz
+             mit kontrollierten HGT-Testkacheln bereitstellen (kein Auto-Deploy).
+          3. API-Terrain-Client, Fehlerbilder und Wertebereiche ueberpruefen,
+             sowie Höhenreferenz und Datenherkunft pro Ergebnis ausweisen.
+          4. Web-App- und API-Vertraege sowie den SRTM/HGT-Cache testen.
+          5. Vor Einsatz an echten Missionsdaten Genauigkeit, NoData,
+             Kontur-, FoV- und Grenzfalltests ausfuehren.
+          """, encoding="utf-8")
+          readme = Path("README.md")
+          text = readme.read_text(encoding="utf-8")
+          text = text.replace(
+              "Die vom Nutzer bereitgestellten OpenFlightHub-Snapshots für Web-App, Datenbank und API liegen unter apps/web-app/, services/database/upstream/ und services/api/upstream/. Für diese drei Archive ist keine umfassende Wiederverwendungslizenz nachgewiesen.",
+              "Die vom Nutzer bereitgestellten OpenFlightHub-Snapshots für Web-App, Datenbank, API und Terrain liegen unter apps/web-app/, services/database/upstream/, services/api/upstream/ und services/terrain/upstream/. Für diese vier Archive ist keine umfassende Wiederverwendungslizenz nachgewiesen.",
+              1
+          )
+          text = text.replace(
+              "- services/api/upstream/: unveränderter Express-/TypeScript-API-Quellsnapshot aus der ZIP; keine automatische Ausführung von MQTT, aktiven DJI-Operationen, Datenbankwrites oder Deploy-Skripten; siehe docs/api-import.md.",
+              "- services/api/upstream/: unveränderter Express-/TypeScript-API-Quellsnapshot aus der ZIP; keine automatische Ausführung von MQTT, aktiven DJI-Operationen, Datenbankwrites oder Deploy-Skripten; siehe docs/api-import.md.\\n- services/terrain/upstream/: unveränderter Gelände-/Höhen-/Sichtlinien-Quellsnapshot aus der ZIP; keine automatischen Dienststarts oder Verbindung zur API. Siehe docs/terrain-import.md.",
+              1
+          )
+          text = text.replace(
+              "Web-App-, Datenbank- und API-Snapshots",
+              "Web-App-, Datenbank-, API- und Terrain-Snapshots",
+              1
+          )
+          text = text.replace(
+              "Rechte an apps/web-app/, services/database/upstream/ und services/api/upstream/ klären",
+              "Rechte an apps/web-app/, services/database/upstream/, services/api/upstream/ und services/terrain/upstream/ klären",
+              1
+          )
+          readme.write_text(text, encoding="utf-8")
+          arch = Path("docs/architecture.md")
+          at = arch.read_text(encoding="utf-8")
+          at = at.replace(
+              "Quell-Snapshots (Web-App, Datenbank und API)",
+              "Quell-Snapshots (Web-App, Datenbank, API und Terrain)",
+              1
+          )
+          at = at.replace(
+              "ein Quellarchiv mit Web-App/API, ein isoliertes Datenbank-Testlabor",
+              "ein Quellarchiv mit Web-App/API/Terrain, ein isoliertes Datenbank-Testlabor",
+              1
+          )
+          arch.write_text(at, encoding="utf-8")
+          print(f"PASS {count} files, {total} bytes, verified source tree {tree}")
+          PY
+          rm .github/workflows/import-openflighthub-terrain-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && { echo "Nothing to import"; exit 1; }
+          git commit -m "Import verified OpenFlightHub terrain ZIP and document boundaries"
+          git push origin HEAD:refs/heads/feat/import-openflighthub-web-app-20261108
