@@ -1,0 +1,57 @@
+name: Verify DroneTerminal API snapshot
+on:
+  push:
+    branches:
+      - main
+      - feat/import-openflighthub-web-app-20261108
+    paths:
+      - 'services/api/**'
+      - '.github/workflows/verify-api.yml'
+  pull_request:
+    paths:
+      - 'services/api/**'
+      - '.github/workflows/verify-api.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source:
+    name: Exact snapshot and cross-component source contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate imported source tree, archive completeness and integration paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse 'HEAD:services/api/upstream')" = "9239f39b6b54cba8da14ad717e3c6fb2ae5d1158"
+          test "$(git ls-tree -r --name-only 'HEAD:services/api/upstream' | wc -l)" -eq 155
+          test ! -f services/api/upstream/secrets.json
+          test -f services/api/upstream/openapi_spec.yaml
+          test -f services/api/upstream/src/launch.ts
+          test -f services/api/upstream/src/generated-definitions/db/DBTypes.ts
+          test -f services/api/upstream/src/connector/dji-pilot-2/index.ts
+          test -f services/database/upstream/schema.dbml
+          test -f apps/web-app/src/api/index.ts
+          test -f vendor/openflighthub/api-client-sdk-typescript/src/index.ts
+          grep -Fq 'openflighthub-api-client-sdk' apps/web-app/src/api/index.ts
+          grep -Fq "db_host" services/api/upstream/src/app.ts
+          echo "PASS: exact API source, baseline Web-App/DB/SDK linkage files found, no committed secrets.json"
+  typecheck:
+    name: TypeScript typecheck (API never started)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: services/api/upstream
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: services/api/upstream/package-lock.json
+      - name: Install exact locked dependencies without installation scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Compile-check TypeScript without launching server or broker
+        run: ./node_modules/.bin/tsc -p tsconfig.json --noEmit --pretty false
