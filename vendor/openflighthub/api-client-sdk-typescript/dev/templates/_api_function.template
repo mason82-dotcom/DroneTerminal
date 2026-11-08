@@ -1,0 +1,8 @@
+{{#if deprecated}}
+/**
+* @deprecated
+*/
+{{/if}}
+function ({{{functionConfig}}}){
+    return makeRequest<{{returnType}}>({{{requestConfig}}})
+}

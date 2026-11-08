@@ -1,0 +1,10 @@
+{
+  "devDependencies": {
+    "@types/node": "^20.11.26",
+    "axios": "^1.6.7",
+    "handlebars": "^4.7.8",
+    "js-yaml": "^4.1.0",
+    "typescript": "^5.4.2",
+    "typescript-formatter": "^7.2.2"
+  }
+}
