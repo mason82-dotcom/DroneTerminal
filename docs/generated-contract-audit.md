@@ -88,3 +88,14 @@ nicht automatisch auf ein anderes SDK umgestellt.
    OpenAPI und generierte DTOs abgleichen.
 4. Weiterhin keine produktiven Deployments, Datenbankmigrationen
    oder DJI-Schreiboperationen aus diesem Check auslösen.
+
+## Erster verifizierter Lauf und aktivierte CI-Grenze
+
+GitHub Actions Run [42522861675](https://github.com/mason82-dotcom/DroneTerminal/actions/runs/42522861675) hat das Originalschema und die OpenAPI in einem temporären Arbeitsverzeichnis verarbeitet. Ergebnis:
+
+- `ApiTypes.ts`: MATCH
+- `ApiSchemas.ts`: MATCH
+- `DBTypes.ts`: MATCH
+- `DBHelpers.ts`: MATCH
+
+Damit waren **4/4 Ausgaben byteidentisch (SHA-256)** und das Repository blieb unverändert. Seit diesem Nachweis nutzt die CI standardmäßig `--fail-on-drift`; neue Abweichungen führen künftig zum Fehlerstatus. Das HTML-/Laufzeitverhalten der API oder die Berechtigung zu einer Weiterverbreitung wird hiermit nicht geprüft.
