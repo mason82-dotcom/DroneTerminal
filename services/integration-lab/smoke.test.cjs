@@ -8,7 +8,7 @@ const path = require('node:path');
 if (process.env.DRONETERMINAL_LAB_ONLY !== '1') throw new Error('Refusing to test outside private integration lab');
 if (!process.env.DRONETERMINAL_LAB_LOGIN_PASSWORD) throw new Error('Missing isolated CI credential');
 const fromApi = createRequire(path.resolve(__dirname, '../api/upstream/package.json'));
-const { WebSocket } = fromApi('ws');
+const WebSocket = fromApi('ws');
 const pgp = fromApi('pg-promise');
 const base = 'http://api:6001';
 
