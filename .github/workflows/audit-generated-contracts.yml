@@ -1,0 +1,62 @@
+name: Audit generated API and database contracts
+on:
+  push:
+    branches:
+      - feat/import-openflighthub-web-app-20261108
+      - main
+    paths:
+      - 'scripts/check-generated-contracts.cjs'
+      - '.github/workflows/audit-generated-contracts.yml'
+      - 'tools/openflighthub/definition-generator/**'
+      - 'services/api/upstream/openapi_spec.yaml'
+      - 'services/api/upstream/src/generated-definitions/**'
+      - 'services/database/upstream/schema.dbml'
+  pull_request:
+    paths:
+      - 'scripts/check-generated-contracts.cjs'
+      - '.github/workflows/audit-generated-contracts.yml'
+      - 'tools/openflighthub/definition-generator/**'
+      - 'services/api/upstream/openapi_spec.yaml'
+      - 'services/api/upstream/src/generated-definitions/**'
+      - 'services/database/upstream/schema.dbml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    name: Generate in temp and compare without source mutation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tools/openflighthub/definition-generator/package-lock.json
+      - name: Install pinned generator dependencies without lifecycle scripts
+        working-directory: tools/openflighthub/definition-generator
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Static syntax check
+        run: node --check scripts/check-generated-contracts.cjs
+      - name: Offline generation into temporary workspace and drift report
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/check-generated-contracts.cjs --report "$RUNNER_TEMP/contract-audit.json"
+      - name: Verify original API schemas and generator have not been modified
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code --             services/api/upstream/src/generated-definitions/             services/api/upstream/openapi_spec.yaml             services/database/upstream/schema.dbml             tools/openflighthub/definition-generator/
+          test -z "$(git status --porcelain --             services/api/upstream/src/generated-definitions/             tools/openflighthub/definition-generator/)"
+      - name: Save SHA-based audit summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: droneterminal-contract-audit
+          path: ${{ runner.temp }}/contract-audit.json
+          if-no-files-found: warn
+          retention-days: 14
